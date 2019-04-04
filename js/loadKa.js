@@ -163,7 +163,7 @@
 			function code(processing)
 			{
 				processing.size(400, 400);
-				processing.background(255, 255, 255);
+				processing.background(0, 0, 0);
 				processing.angleMode = "degrees";
 				
 				processing.mousePressed = function() {};

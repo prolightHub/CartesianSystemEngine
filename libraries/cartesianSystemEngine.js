@@ -1,5 +1,9 @@
 !(function(window, document, Math)
 {
+    String.prototype.upper = function() 
+    {
+        return this.charAt(0).toUpperCase() + this.slice(1);
+    };
 	String.prototype.lower = function() 
 	{
 	    return this.charAt(0).toLowerCase() + this.slice(1);
@@ -14,6 +18,19 @@
 		/*Scope references*/
 		var c = this, C = CartesianSystemEngine;
 
+        C.prototype.Objects = {};
+        C.prototype.factory = {};
+        c.world = {
+            width: 0,
+            height: 0,
+            bounds: {
+                minX: 0,
+                maxX: 0,
+                minY: 0,
+                maxY: 0
+            }
+        };
+
 		//Lets the entire project know that we have initiated the project.
 		c.initiated = init(this, C);
 
@@ -22,8 +39,26 @@
 			throw ("The engine failed to initiate with error code '" + c.initiated + "'");
 		}
 
-		config = config || {};
-		C.prototype.cameraGrid.setup(config.cols || 1, config.rows || 1, config.cellWidth || 0, config.cellHeight || 0);
+		config = config || { 
+            grid: {},
+            world: {}
+        };
+
+        config.grid = config.grid || {};
+        config.world = config.world || {};
+
+        C.prototype.setup = function()
+        {
+        	C.prototype.cameraGrid.setup(config.grid.cols || 1, config.grid.rows || 1, config.grid.cellWidth || 0, config.grid.cellHeight || 0);
+
+            c.world.width = config.world.width || config.grid.cols * config.grid.cellWidth;
+            c.world.height = config.world.height || config.grid.rows * config.grid.cellHeight;
+
+            c.world.bounds.maxX = c.world.width;
+            c.world.bounds.maxY = c.world.height;
+        };
+
+        C.prototype.setup();  
 	};
 
 	function init(c, C)
@@ -164,7 +199,7 @@
 
 		    		for(var row = 0; row < rows; row++)
 			    	{
-			    		this[col].push();
+			    		this[col].push({});
 			    	}
 		    	}
 
@@ -182,8 +217,43 @@
 		        };
 		    };
 
-		    cameraGrid.addReference = function(object) {};
-		    cameraGrid.removeReference = function(object) {};
+		    cameraGrid.addReference = function(object) 
+            {
+                var index = object._arrayName + object._id;
+                var toSet = {
+                    arrayName: object._arrayName,
+                    id: object._id
+                };
+
+                var upperLeft = this.getPlace(object.body.boundingBox.minX, object.body.boundingBox.minY);
+                var lowerRight = this.getPlace(object.body.boundingBox.maxX, object.body.boundingBox.maxY);
+
+                for(var col = upperLeft.col; col <= lowerRight.col; col++)
+                {
+                    for(var row = upperLeft.row; row <= lowerRight.row; row++)
+                    {
+                        this[col][row][index] = toSet;
+                    }
+                }
+
+                object._upperLeft = upperLeft;
+                object._lowerRight = lowerRight;
+            };
+		    cameraGrid.removeReference = function(object) 
+            {
+                var index = object._arrayName + object._id;
+
+                var upperLeft = object._upperLeft,
+                    lowerRight = object._lowerRight;
+
+                for(var col = upperLeft.col; col <= lowerRight.col; col++)
+                {
+                    for(var row = upperLeft.row; row <= lowerRight.row; row++)
+                    {
+                        delete this[col][row][index];
+                    }
+                }
+            };
 
 			return cameraGrid;
 		}(C.prototype.createArray));
@@ -191,23 +261,93 @@
 		C.prototype.gameObjects = (function(c) 
 		{
 			var gameObjects = c.createArray([]);
+            
+			gameObjects.update = function(cam) 
+            {
+                var used = {};
+                this.used = {};
 
-			gameObjects.update = function() {};
-			gameObjects.draw = function() 
+                var col, row, cell, i, object, index;
+
+                for(var col = cam._upperLeft.col; col <= cam._lowerRight.col; col++)
+                {
+                    for(var row = cam._upperLeft.row; row <= cam._lowerRight.row; row++)
+                    {
+                        cell = cse.cameraGrid[col][row];
+
+                        for(i in cell)
+                        {
+                            if(used[i])
+                            {
+                                continue;
+                            }
+
+                            // Is the same as getObject(name) and then getById(id)
+                            object = this[this.references[cell[i].arrayName]].map[cell[i].id];
+                            object.update();
+
+                            /* Refreshes the object's cell place after it has been moved */
+                            if(object.body.physics.moves)
+                            {
+                                cse.cameraGrid.removeReference(object);
+                                cse.cameraGrid.addReference(object);
+                            }
+
+                            // Save info for rendering
+                            index = this.references[object._arrayName];
+                            this.used[index] = this.used[index] || [];
+                            this.used[index].push(object._id);
+
+                            // We've used the object for this loop
+                            used[i] = true;
+                        }
+                    }
+                }
+            };
+			gameObjects.draw = function(cam) 
 			{
-				for(var i = 0; i < this.length; i++)
-				{
-					for(var j = 0; j < this[i].length; j++)
-					{
-						this[i][j].draw();
-					}
-				}
+                var i, j;
+
+                for(i in this.used)
+                {
+                    for(j = 0; j < this.used[i].length; j++)
+                    {
+                        this[i].map[this.used[i][j]].draw();
+                    }
+                }
 			};
 
 			return gameObjects;
 		}(C.prototype));
 
-        C.prototype.Objects = {};
+        C.prototype.factory.add = (function(c) 
+        {
+            function add(arrayName, args)
+            {
+                var place = c.gameObjects.getObject(arrayName);
+                var object = place.add.apply(place, args);
+                c.cameraGrid.addReference(object);
+                return object;
+            }
+
+            return add;
+        }(C.prototype)); 
+
+        C.prototype.factory.addObject = (function(c) 
+        {
+            function addObject()
+            {
+                var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
+                var inputObject = arguments[1] || arguments[0];
+
+                c.gameObjects.addObject(name.lower(), c.createArray(inputObject));
+                c.Objects[name.upper()] = inputObject;
+
+                return inputObject;
+            }
+
+            return addObject;
+        }(C.prototype)); 
 
 		C.prototype.Objects.GameObject = (function(c) 
 		{
@@ -216,7 +356,7 @@
 				this.body = {
 					physics: {
 						shape: "",
-						movement: "static",
+						moves: false,
 						solidObject: false
 					},
 					boundingBox: {}
@@ -242,9 +382,12 @@
 				this.width = width;
 				this.height = height;
 
+                this.halfWidth = width / 2;
+                this.halfHeight = height / 2;
+
 				this.body.physics = {
 					shape: "rect",
-		            movement: "static",
+		            moves: false,
 		            solidObject: true
 				};
 
