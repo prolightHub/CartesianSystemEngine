@@ -73,6 +73,7 @@ function objects()
     var Block = function(x, y, width, height, color)
     {
         cse.Objects.Rect.apply(this, arguments);
+        // cse.Objects.DynamicObject.apply(this);
 
         this.draw = function()
         {
@@ -86,6 +87,7 @@ function objects()
     var Ring = function(x, y, diameter, color)
     {
         cse.Objects.Circle.apply(this, arguments);
+        // cse.Objects.DynamicObject.apply(this);
 
         this.draw = function()
         {
@@ -98,7 +100,7 @@ function objects()
 
     var Player = function(x, y, width, height, color)
     {
-        Block.apply(this, arguments);
+        Block.call(this, x, y, width, height, color);
         cse.Objects.DynamicObject.apply(this);
         cse.Objects.LifeForm.apply(this);
 

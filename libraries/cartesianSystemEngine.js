@@ -381,27 +381,82 @@
                             };
                         }
                     },
+                    "circlecircle": {
+                        colliding: function(circle1, circle2)
+                        {
+                            this.distSq = Math.pow(Math.abs(circle2.x - circle1.x), 2) + Math.pow(Math.abs(circle2.y - circle1.y), 2); 
+                            return (this.distSq < Math.pow(circle1.radius + circle2.radius, 2));
+                        },
+                        solveCollision: function(circle1, circle2, recurse)
+                        {
+                            var angle = Math.atan2(circle1.y - circle2.y, circle1.x - circle2.x);
+                            var input = Math.max(0, circle1.radius + circle2.radius - Math.sqrt(this.distSq));
+
+                            circle1.x += input * Math.cos(angle);
+                            circle1.y += input * Math.sin(angle);
+
+                            if(circle2.body.physics.moves && !recurse)
+                            {
+                                // var angle = Math.atan2(circle2.y - circle1.y, circle2.x - circle1.x);
+                                // var input = Math.max(0, circle2.radius + circle1.radius - Math.sqrt(this.distSq));
+
+                                // circle2.x += input * Math.cos(angle);
+                                // circle2.y += input * Math.sin(angle);
+                                this.solveCollision(circle2, circle1, true);
+                            }
+                        }
+                    },
                     "rectcircle": {
                         colliding: function(rect, circle)
                         {
                             var x = circle.x - Math.constrain(circle.x, rect.x, rect.x + rect.width);                  
                             var y = circle.y - Math.constrain(circle.y, rect.y, rect.y + rect.height);
-
-                            return (x * x + y * y <= circle.radius * circle.radius);
+                            return ((this.dist = x * x + y * y) <= circle.radius * circle.radius);
                         },
                         solveCollision: function(rect, circle)
                         {
-                            rect.middleX = rect.x + rect.halfWidth;
-                            rect.middleY = rect.y + rect.halfHeight;
+                            var angle = Math.atan2(rect.y + rect.halfHeight - circle.y, rect.x + rect.halfWidth - circle.x); 
 
-
-                            var angle = Math.atan2(rect.middleY - circle.y, rect.middleX - circle.x); 
-
-                            var ox = (circle.radius + rect._halfHyp) * Math.cos(angle), 
-                                oy = (circle.radius + rect._halfHyp) * Math.sin(angle);
-
-                            rect.x = Math.constrain(circle.x + ox - rect.halfWidth, circle.body.boundingBox.minX - rect.width, circle.body.boundingBox.maxX);
-                            rect.y = Math.constrain(circle.y + oy - rect.halfHeight, circle.body.boundingBox.minY - rect.height, circle.body.boundingBox.maxY);
+                            if(rect.body.physics.moves)
+                            {
+                                var cBox = circle.body.boundingBox;
+                                rect.x = Math.constrain(circle.x + (circle.radius + rect._halfHyp) * Math.cos(angle) - rect.halfWidth, cBox.minX - rect.width, cBox.maxX);
+                                rect.y = Math.constrain(circle.y + (circle.radius + rect._halfHyp) * Math.sin(angle) - rect.halfHeight, cBox.minY - rect.height, cBox.maxY);
+                            }
+                            if(circle.body.physics.moves)
+                            {
+                                if(!rect.body.sides)
+                                {
+                                    var esc = Math.abs(circle.radius - Math.sqrt(this.dist));
+                                    circle.x -= esc * Math.cos(angle);
+                                    circle.y -= esc * Math.sin(angle);
+                                }else{
+                                    if(rect.body.sides.left && circle.x + circle.radius <= rect.x + Math.abs(circle.body.xVel))
+                                    {
+                                        // circle.y -= esc * Math.sin(angle);
+                                        circle.x = rect.x - circle.radius;
+                                        circle.body.xVel = 0;
+                                    }
+                                    if(rect.body.sides.right && circle.x - circle.radius + Math.abs(circle.body.xVel) >= rect.x + rect.width)
+                                    {
+                                        // circle.y -= esc * Math.sin(angle);
+                                        circle.x = rect.x + rect.width + circle.radius;
+                                        circle.body.xVel = 0;
+                                    }
+                                    if(rect.body.sides.up && circle.y + circle.radius <= rect.y + Math.abs(circle.body.yVel))
+                                    {
+                                        // circle.x -= esc * Math.cos(angle);
+                                        circle.y = rect.y - circle.radius;
+                                        circle.body.yVel = 0;
+                                    }
+                                    if(rect.body.sides.down && circle.y - circle.radius + Math.abs(circle.body.yVel) >= rect.y + rect.height)
+                                    {
+                                        // circle.x -= esc * Math.cos(angle);
+                                        circle.y = rect.y + rect.height + circle.radius;
+                                        circle.body.yVel = 0;
+                                    }
+                                }
+                            }
                         }
                     }
                 },
