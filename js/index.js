@@ -83,63 +83,48 @@ function objects()
     };
     cse.factory.addObject("block", Block);
 
+    var Ring = function(x, y, diameter, color)
+    {
+        cse.Objects.Circle.apply(this, arguments);
+
+        this.draw = function()
+        {
+            noStroke();
+            fill(color);
+            ellipse(this.x, this.y, this.diameter, this.diameter);
+        };
+    };
+    cse.factory.addObject("ring", Ring);
+
     var Player = function(x, y, width, height, color)
     {
         Block.apply(this, arguments);
-        this.body.physics.moves = "dynamic";
+        cse.Objects.DynamicObject.apply(this);
+        cse.Objects.LifeForm.apply(this);
 
         this.controls = {
-            left : function() 
+            left: function() 
             {
                 return keys[LEFT] || keys.a;
             },
-            right : function() 
+            right: function() 
             {
                 return keys[RIGHT] || keys.d;
             },
-            up : function() 
+            up: function() 
             {
                 return keys[UP] || keys.w;
             },
-            down : function() 
+            down: function() 
             {
                 return keys[DOWN] || keys.s;
             },
         };
 
-        this.xSpeed = 4;
-        this.ySpeed = 4;
-
-        this.update = function()
-        {
-            this.x += this.xVel;
-            this.y += this.yVel;
-
-            this.x = constrain(this.x, cse.world.bounds.minX, cse.world.bounds.maxX - this.width);
-            this.y = constrain(this.y, cse.world.bounds.minY, cse.world.bounds.maxY - this.height);
-
-            this.body.updateBoundingBox();
-
-            this.xVel = 0;
-            this.yVel = 0;
-
-            if(this.controls.left())
-            {
-                this.xVel = -this.xSpeed;
-            }
-            if(this.controls.right())
-            {
-                this.xVel = this.xSpeed;
-            }
-            if(this.controls.up())
-            {
-                this.yVel = -this.ySpeed;
-            }
-            if(this.controls.down())
-            {
-                this.yVel = this.ySpeed;
-            }
-        };
+        this.body.maxXVel = 5;
+        this.body.maxYVel = 5;
+        this.body.xAcl = 2;
+        this.body.yAcl = 2;
     };
     cse.factory.addObject("player", Player);
 }
@@ -178,7 +163,7 @@ function preload()
         outFps: 60,
         lastOutTime: 0,
         
-        diff : 1000 / 60,
+        diff: 1000 / 60,
         speed: 1,
     };
     fpsCatcher.update = function()
@@ -288,7 +273,15 @@ function main()
             ]);
         }
 
-        // cse.gameObjects.forEach(array => array.forEach(object => cse.cameraGrid.addReference(object)));
+        for(var i = 0; i < 200; i++)
+        {
+            cse.factory.add("ring", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(20, 60), 
+                colors[floor(random(0, colors.length))]
+            ]);
+        }
     }
 
     var cam = new Camera(45, 45, width - 90, height - 90);

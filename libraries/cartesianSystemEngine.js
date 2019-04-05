@@ -8,6 +8,10 @@
 	{
 	    return this.charAt(0).toLowerCase() + this.slice(1);
 	};
+    Math.constrain = function(num, min, max)
+    {
+        return this.min(this.max(num, min), max);
+    };
 
 	function noop() {}
 
@@ -56,6 +60,8 @@
 
             c.world.bounds.maxX = c.world.width;
             c.world.bounds.maxY = c.world.height;
+
+            c.noPhysics = config.noPhysics || false;
         };
 
         C.prototype.setup();  
@@ -64,6 +70,8 @@
 	function init(c, C)
 	{
 		"use strict";
+
+        var _c = c;
 
 		C.prototype.createArray = (function()
 		{
@@ -176,6 +184,285 @@
 			return createArray;
 		}());
 
+        C.prototype.observer = (function(c) 
+        {
+            var observer = {
+                collisionTypes: {
+                    "rectrect": {
+                        colliding: function(rect1, rect2)
+                        {
+                            return ((rect1.x + rect1.width > rect2.x && 
+                                     rect1.x < rect2.x + rect2.width) && 
+                                    (rect1.y + rect1.height > rect2.y && 
+                                     rect1.y < rect2.y + rect2.height));
+                        },
+                        getSide: function(rect1, rect2)
+                        {
+                            /*
+                                @dx: Difference x or the difference between both centers 
+                                     of rectangles in X-axis.
+                                     
+                                @dy: Difference y or the difference between both centers 
+                                     of rectangles in Y-axis.
+                            */
+                            var dx = ((rect1.x + rect1.halfWidth) - (rect2.x + rect2.halfWidth)),
+                                dy = ((rect1.y + rect1.halfHeight) - (rect2.y + rect2.halfHeight));
+                            
+                            /*Note that these values can be subsituted 
+                              or moved down below (with ox and oy)*/
+                            var vx = rect1.body.xVel + rect2.body.xVel,
+                                vy = rect1.body.yVel + rect2.body.yVel;
+                            
+                            //Based on the last decided side ignore x or y.
+                            if(rect1.body.side === "up" || rect1.body.side === "down" || rect1.body.side === "")
+                            {
+                                vx = 0;
+                            }
+                            else if(rect1.body.side === "left" || rect1.body.side === "right")
+                            {
+                                vy = 0;
+                            }
+
+                            var ox = (rect1.halfWidth  + rect2.halfWidth)  - Math.abs(dx - vx),
+                                oy = (rect1.halfHeight + rect2.halfHeight) - Math.abs(dy - vy);
+                                
+                            if(ox < oy)
+                            {
+                                if(dx < 0)
+                                {
+                                    return "left";
+                                }else{
+                                    return "right";
+                                }
+                            }else{
+                                if(dy < 0)
+                                {
+                                    return "up";  
+                                }else{
+                                    return "down";  
+                                }
+                            }
+                        },
+                        applySide: function(side, rect1, rect2, noZero)
+                        {
+                            switch(side)
+                            {
+                                case "left":
+                                    if(rect1.body.gravityX)
+                                    {
+                                        rect1.body.inAir = (rect1.body.gravityX < 0);
+                                    }
+                                    rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
+                                    rect1.x = rect2.x - rect1.width;
+                                    break;
+                                
+                                case "right":
+                                    if(rect1.body.gravityX)
+                                    {
+                                        rect1.body.inAir = (rect1.body.gravityX > 0);
+                                    }
+                                    rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
+                                    rect1.x = rect2.x + rect2.width;
+                                    break;
+                                         
+                                case "up":
+                                    if(rect1.body.gravityY)
+                                    {
+                                        rect1.body.inAir = (rect1.body.gravityY < 0);
+                                    }
+                                    rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
+                                    rect1.y = rect2.y - rect1.height;
+                                    break;
+                                
+                                case "down":
+                                    if(rect1.body.gravityY)
+                                    {
+                                        rect1.body.inAir = (rect1.body.gravityY > 0);
+                                    }
+                                    rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
+                                    rect1.y = rect2.y + rect2.height; 
+                                    break;
+                            }
+                        },
+                        applyVelSide: function(side, body1, body2)
+                        {
+                            switch(side)
+                            {
+                                case "left":
+                                    if(body1.xVel > 0)
+                                    {
+                                        body2.xVel += body1.xForce || body1.xAcl * (body1.mass || 1);  
+                                    }
+                                    return true;
+                                
+                                case "right":
+                                    if(body1.xVel < 0) 
+                                    {
+                                        body2.xVel -= body1.xForce || body1.xAcl * (body1.mass || 1);  
+                                    }
+                                    return true;
+                                    
+                                case "up":
+                                    if(body1.yVel > 0)
+                                    {
+                                        body2.yVel += body1.yForce || (body1.yAcl || 2) * (body1.mass || 1);
+                                    }
+                                    return true;
+                                    
+                                case "down":
+                                    if(body1.yVel < 0)
+                                    {
+                                        body2.yVel -= body1.yForce || (body1.yAcl || 2) * (body1.mass || 1); 
+                                    }
+                                    return true;
+                            }
+                            return false;
+                        },
+                        getSideOneWay: function(side, rect1, oneWay)
+                        {
+                            switch(side)
+                            {
+                                case "left":
+                                    if(oneWay.body.sides.left && rect1.body.xVel > 0 && 
+                                    rect1.x + rect1.width <= oneWay.x + Math.abs(rect1.body.xVel))
+                                    {
+                                        return "left";    
+                                    }
+                                    break;
+                                
+                                case "right":
+                                    if(oneWay.body.sides.right && rect1.body.xVel < 0 && 
+                                    rect1.x + Math.abs(rect1.body.xVel) >= oneWay.x + oneWay.width)
+                                    {
+                                        return "right";    
+                                    }
+                                    break;
+                                    
+                                case "up":
+                                    if(oneWay.body.sides.up && rect1.body.yVel > 0 && 
+                                    rect1.y + rect1.height <= oneWay.y + Math.abs(rect1.body.yVel))
+                                    {
+                                        return "up";
+                                    }
+                                    break;
+                                    
+                                case "down":
+                                    if(oneWay.body.sides.down && rect1.body.yVel < 0 && 
+                                    rect1.y + Math.abs(rect1.body.yVel) >= oneWay.y + oneWay.height)
+                                    {
+                                        return "down";    
+                                    }
+                                    break;
+                            }
+                            return "";
+                        },
+                        solveCollision: function(rect1, rect2)
+                        {
+                            var side = this.getSide(rect1, rect2);
+
+                            if(rect2.body.sides)
+                            {
+                                side = this.getSideOneWay(side, rect1, rect2);
+                            }
+
+                            rect1.body.side = side;
+
+                            var noZero;
+
+                            if(rect2.body.physics.moves)
+                            {
+                                noZero = this.applyVelSide(side, rect1.body, rect2.body);
+                            }
+
+                            this.applySide(side, rect1, rect2, noZero);
+
+                            return {
+                                side: side
+                            };
+                        }
+                    },
+                    "rectcircle": {
+                        colliding: function(rect, circle)
+                        {
+                            var x = circle.x - Math.constrain(circle.x, rect.x, rect.x + rect.width);                  
+                            var y = circle.y - Math.constrain(circle.y, rect.y, rect.y + rect.height);
+
+                            return (x * x + y * y <= circle.radius * circle.radius);
+                        },
+                        solveCollision: function(rect, circle)
+                        {
+                            rect.middleX = rect.x + rect.halfWidth;
+                            rect.middleY = rect.y + rect.halfHeight;
+
+
+                            var angle = Math.atan2(rect.middleY - circle.y, rect.middleX - circle.x); 
+
+                            var ox = (circle.radius + rect._halfHyp) * Math.cos(angle), 
+                                oy = (circle.radius + rect._halfHyp) * Math.sin(angle);
+
+                            rect.x = Math.constrain(circle.x + ox - rect.halfWidth, circle.body.boundingBox.minX - rect.width, circle.body.boundingBox.maxX);
+                            rect.y = Math.constrain(circle.y + oy - rect.halfHeight, circle.body.boundingBox.minY - rect.height, circle.body.boundingBox.maxY);
+                        }
+                    }
+                },
+                getType: function(name1, name2, object)
+                {
+                    var flipped;
+                    var typeToReturn = "";
+                    var type = name1 + name2;
+
+                    if(object[type])
+                    {
+                        typeToReturn = type;
+                    }else{
+                        //Flip shapes
+                        flipped = true;
+                        type = name2 + name1;
+                        if(object[type])
+                        {
+                            typeToReturn = type;
+                        }
+                    }
+                    return {
+                        type: typeToReturn,
+                        flipped: flipped,
+                    };
+                },     
+                access: function(object1, object2, access)
+                {
+                    var info = observer.getType(
+                        object1.body.physics.shape,
+                        object2.body.physics.shape,
+                        observer.collisionTypes
+                    );
+                    var colliding = false;
+
+                    if(info.flipped)
+                    {
+                        colliding = observer.collisionTypes[info.type][access](object2, object1);              
+                    }else{
+                        colliding = observer.collisionTypes[info.type][access](object1, object2);
+                    }
+                    return colliding;
+                },
+                colliding: function(object1, object2)
+                {
+                    return this.access(object1, object2, "colliding");
+                },
+                solveCollision: function(object1, object2)
+                {
+                    return this.access(object1, object2, "solveCollision");
+                },
+                boundingBoxesColliding: function(box1, box2)
+                {
+                    return (box1.minX < box2.maxX && box1.maxX > box2.minX && 
+                            box1.minY < box2.maxY && box1.maxY > box2.minY);
+                }
+            };
+
+            return observer;
+        }(C.prototype));
+
 		C.prototype.cameraGrid = (function(c) 
 		{
 			var cameraGrid = [];
@@ -258,186 +545,13 @@
 			return cameraGrid;
 		}(C.prototype));
 
-		C.prototype.observer = (function(c) 
-		{
-			var observer = {
-				collisionTypes: {
-					"rectrect": {
-						colliding: function(rect1, rect2)
-						{
-							return ((rect1.x + rect1.width > rect2.x && 
-		                         	 rect1.x < rect2.x + rect2.width) && 
-		                        	(rect1.y + rect1.height > rect2.y && 
-		                         	 rect1.y < rect2.y + rect2.height));
-						},
-						getSide: function(rect1, rect2)
-		                {
-		                    /*
-		                        @dx: Difference x or the difference between both centers 
-		                             of rectangles in X-axis.
-		                             
-		                        @dy: Difference y or the difference between both centers 
-		                             of rectangles in Y-axis.
-		                    */
-		                    var dx = ((rect1.x + rect1.halfWidth) - (rect2.x + rect2.halfWidth)),
-		                        dy = ((rect1.y + rect1.halfHeight) - (rect2.y + rect2.halfHeight));
-		                    
-		                    /*Note that these values can be subsituted 
-		                      or moved down below (with ox and oy)*/
-		                    var vx = rect1.xVel + rect2.xVel,
-		                        vy = rect1.yVel + rect2.yVel;
-		                    
-		                    //Based on the last decided side ignore x or y.
-		                    if(rect1.body.side === "up" || rect1.body.side === "down")
-		                    {
-		                        vx = 0;
-		                    }
-		                    else if(rect1.body.side === "left" || rect1.body.side === "right")
-		                    {
-		                        vy = 0;
-		                    }
-
-		                    var ox = (rect1.halfWidth  + rect2.halfWidth)  - Math.abs(dx - vx),
-		                        oy = (rect1.halfHeight + rect2.halfHeight) - Math.abs(dy - vy);
-		                        
-		                    if(ox < oy)
-		                    {
-		                        if(dx < 0)
-		                        {
-		                            return "left";
-		                        }else{
-		                            return "right";
-		                        }
-		                    }else{
-		                        if(dy < 0)
-		                        {
-		                            return "up";  
-		                        }else{
-		                            return "down";  
-		                        }
-		                    }
-		                },
-		                applySide: function(side, rect1, rect2, noZero)
-		                {
-		                    switch(side)
-		                    {
-		                        case "left" :
-		                            if(rect1.gravityX)
-		                            {
-		                                rect1.inAir = (rect1.gravityX < 0);
-		                            }
-		                            rect1.xVel = (!noZero) ? 0 : rect1.xVel;
-		                            rect1.x = rect2.x - rect1.width;
-		                            break;
-		                        
-		                        case "right" :
-		                            if(rect1.gravityX)
-		                            {
-		                                rect1.inAir = (rect1.gravityX > 0);
-		                            }
-		                            rect1.xVel = (!noZero) ? 0 : rect1.xVel;
-		                            rect1.x = rect2.x + rect2.width;
-		                            break;
-		                                 
-		                        case "up" :
-		                            if(rect1.gravityY)
-		                            {
-		                                rect1.inAir = (rect1.gravityY < 0);
-		                            }
-		                            rect1.yVel = (!noZero) ? 0 : rect1.yVel;
-		                            rect1.y = rect2.y - rect1.height;
-		                            break;
-		                        
-		                        case "down" :
-		                            if(rect1.gravityY)
-		                            {
-		                                rect1.inAir = (rect1.gravityY > 0);
-		                            }
-		                            rect1.yVel = (!noZero) ? 0 : rect1.yVel;
-		                            rect1.y = rect2.y + rect2.height; 
-		                            break;
-		                    }
-		                },
-						solveCollision: function(rect1, rect2)
-						{
-							var side = this.getSide(rect1, rect2);
-
-							rect1.body.side = side;
-
-                    		var noZero;
-                    		this.applySide(side, rect1, rect2, noZero);
-
-							return {
-								side: side
-							};
-						}
-					}
-				},
-				getType: function(name1, name2, object)
-		        {
-		        	var flipped;
-		            var typeToReturn = "";
-		            var type = name1 + name2;
-
-		            if(object[type])
-		            {
-		                typeToReturn = type;
-		            }else{
-		                //Flip shapes
-		                flipped = true;
-		                type = name2 + name1;
-		                if(object[type])
-		                {
-		                    typeToReturn = type;
-		                }
-		            }
-		            return {
-		                type: typeToReturn,
-		                flipped: flipped,
-		            };
-		        },     
-				access: function(object1, object2, access)
-		        {
-		            var info = observer.getType(
-		                object1.body.physics.shape,
-		                object2.body.physics.shape,
-		                observer.collisionTypes
-		            );
-		            var colliding = false;
-
-		            if(info.flipped)
-		            {
-		            	colliding = observer.collisionTypes[info.type][access](object2, object1);              
-		            }else{
-		                colliding = observer.collisionTypes[info.type][access](object1, object2);
-		            }
-		            return colliding;
-		        },
-				colliding: function(object1, object2)
-		        {
-		            return this.access(object1, object2, "colliding");
-		        },
-		        solveCollision: function(object1, object2)
-		        {
-		            return this.access(object1, object2, "solveCollision");
-		        },
-				boundingBoxesColliding: function(box1, box2)
-		        {
-		            return (box1.minX < box2.maxX && box1.maxX > box2.minX && 
-		                    box1.minY < box2.maxY && box1.maxY > box2.minY);
-		        }
-			};
-
-			return observer;
-		}(C.prototype));
-
 		C.prototype.gameObjects = (function(c) 
 		{
 			var gameObjects = c.createArray([]);
 
 			gameObjects.applyCollision = function(objectA)
 			{
-				if(!objectA.body.physics.moves)
+				if(!objectA.body.physics.moves || _c.noPhysics)
 				{
 					return;
 				}
@@ -474,14 +588,13 @@
 		                        continue;        
 		                    }
 
-		                    if((objectA.body.physics.full && objectB.body.physics.full) || 
-		                    	c.observer.colliding(objectA, objectB))
+		                    if((objectA.body.physics.full && objectB.body.physics.full) || c.observer.colliding(objectA, objectB))
 		                    {
 		                    	info = {};
 
 		                    	if(objectA.body.physics.solid && objectB.body.physics.solid)
 		                    	{
-		                    		info = c.observer.solveCollision(objectA, objectB);
+		                    		info = c.observer.solveCollision(objectA, objectB) || {};
 
 		                    		objectA.body.updateBoundingBox();
                         			objectB.body.updateBoundingBox();   
@@ -604,8 +717,14 @@
 						moves: false,
 						solid: false
 					},
-					boundingBox: {}
+					boundingBox: {},
+
+                    xVel: 0,
+                    yVel: 0
 				};
+
+                this.body.contain = function() {};
+                this.body.updateBoundingBox = function() {};
 
 				this.update = function() {};
 				this.draw = function() {};
@@ -633,15 +752,14 @@
                 this.halfWidth = width / 2;
                 this.halfHeight = height / 2;
 
+                this._halfHyp = Math.sqrt(Math.pow(this.halfWidth, 2) + Math.pow(this.halfHeight, 2));
+
 				this.body.physics = {
 					shape: "rect",
 		            moves: false,
 		            solid: true,
 		            full: true
 				};
-
-				this.xVel = 0;
-				this.yVel = 0;
 
 				var self = this;
 
@@ -654,12 +772,187 @@
 					box.maxY = self.y + self.height;
 				};
 				this.body.updateBoundingBox();
+
+                this.body.contain = function()
+                {
+                    self.x = Math.constrain(self.x, cse.world.bounds.minX, cse.world.bounds.maxX - self.width);
+                    self.y = Math.constrain(self.y, cse.world.bounds.minY, cse.world.bounds.maxY - self.height);
+                };
 			}
 
 			c.gameObjects.addObject("rect", c.createArray(Rect));
 
 			return Rect;
 		}(C.prototype));
+
+        C.prototype.Objects.Circle = (function(c) 
+        {
+            function Circle(x, y, diameter)
+            {
+                c.Objects.GameObject.apply(this, arguments);
+
+                this.x = x;
+                this.y = y;
+                this.diameter = diameter;
+
+                this.radius = diameter / 2;
+
+                this.body.physics = {
+                    shape: "circle",
+                    moves: false,
+                    solid: true,
+                    full: false
+                };
+
+                var self = this;
+
+                this.body.updateBoundingBox = function()
+                {
+                    this.boundingBox.minX = self.x - self.radius;
+                    this.boundingBox.minY = self.y - self.radius;
+                    this.boundingBox.maxX = self.x + self.radius;
+                    this.boundingBox.maxY = self.y + self.radius;
+                };
+                this.body.updateBoundingBox();
+
+                this.body.contain = function()
+                {
+                    self.x = Math.constrain(self.x, cse.world.bounds.minX + self.radius, cse.world.bounds.maxX - self.radius);
+                    self.y = Math.constrain(self.y, cse.world.bounds.minY + self.radius, cse.world.bounds.maxY - self.radius);
+                };
+            }
+
+            return Circle;
+        }(C.prototype));
+
+        C.prototype.Objects.DynamicObject = (function(c) 
+        {
+            function DynamicObject()
+            {
+                this.body.xAcl = 0;
+                this.body.yAcl = 0;
+
+                this.body.xDeacl = 0;
+                this.body.yDeacl = 0;
+                this.body.maxXVel = 0;
+                this.body.maxYVel = 0;
+
+                this.body.gravityX = 0;
+                this.body.gravityY = 0;
+
+                this.body.inAir = false;
+                this.body.physics.moves = true; 
+
+                var self = this;
+                this.body.updateVel = function()
+                {
+                    this.xVel += this.gravityX;
+                    this.xVel = Math.constrain(this.xVel, -this.maxXVel, this.maxXVel);
+                    self.x += this.xVel;
+                    
+                    this.yVel += this.gravityY;
+                    this.yVel = Math.constrain(this.yVel, -this.maxYVel, this.maxYVel);
+                    self.y += this.yVel;
+
+                    this.inAir = true;
+                };
+
+                var lastUpdate = this.update;
+                this.update = function()
+                {
+                    lastUpdate.apply(this, arguments);
+
+                    this.body.updateVel();
+                    this.body.contain();
+                    this.body.updateBoundingBox();
+                };
+            }
+
+            c.gameObjects.addObject("dynamicObject", c.createArray(DynamicObject));
+
+            return DynamicObject;
+        }(C.prototype));
+
+        C.prototype.Objects.LifeForm = (function(c) 
+        {
+            function LifeForm()
+            {
+                this.controls = { 
+                    left: noop, 
+                    right: noop, 
+                    up: noop, 
+                    down: noop
+                };
+
+                var lastUpdate = this.update;
+                this.update = function()
+                {
+                    lastUpdate.apply(this, arguments);
+
+                    if(this.controls.left())
+                    {
+                        this.body.xVel -= this.body.xAcl;
+                    }
+                    if(this.controls.right())
+                    {
+                        this.body.xVel += this.body.xAcl;
+                    }
+                    if(!this.controls.left() && !this.controls.right())
+                    {
+                        var xDeacl = this.body.xDeacl || this.body.xAcl;
+
+                        //Deaccleration
+                        if(this.body.xVel < 0)
+                        {
+                            this.body.xVel += xDeacl;
+                        }
+                        else if(this.body.xVel > 0)
+                        {
+                            this.body.xVel -= xDeacl;
+                        }
+
+                        //Stop from moving in one direction.
+                        if(Math.abs(this.body.xVel) <= xDeacl)
+                        {
+                            this.body.xVel = 0;
+                        }
+                    }
+
+                    if(this.controls.up())
+                    {
+                        this.body.yVel -= this.body.yAcl;
+                    }
+                    if(this.controls.down())
+                    {
+                        this.body.yVel += this.body.yAcl;
+                    }
+                    if(!this.controls.up() && !this.controls.down())
+                    {
+                        var yDeacl = this.body.yDeacl || this.body.yAcl;
+
+                        //Deaccleration
+                        if(this.body.yVel < 0)
+                        {
+                            this.body.yVel += yDeacl;
+                        }
+                        else if(this.body.yVel > 0)
+                        {
+                            this.body.yVel -= yDeacl;
+                        }
+
+                        //Stop from moving in one direction.
+                        if(Math.abs(this.body.yVel) <= yDeacl)
+                        {
+                            this.body.yVel = 0;
+                        }
+                    }
+                };
+            }
+
+            c.gameObjects.addObject("lifeForm", c.createArray(LifeForm));
+
+            return LifeForm;
+        }(C.prototype));
 
 		return true;
 	}
