@@ -387,7 +387,7 @@
                             this.distSq = Math.pow(Math.abs(circle2.x - circle1.x), 2) + Math.pow(Math.abs(circle2.y - circle1.y), 2); 
                             return (this.distSq < Math.pow(circle1.radius + circle2.radius, 2));
                         },
-                        solveCollision: function(circle1, circle2, recurse)
+                        solveCollision: function(circle1, circle2)
                         {
                             var angle = Math.atan2(circle1.y - circle2.y, circle1.x - circle2.x);
                             var input = Math.max(0, circle1.radius + circle2.radius - Math.sqrt(this.distSq));
@@ -395,14 +395,13 @@
                             circle1.x += input * Math.cos(angle);
                             circle1.y += input * Math.sin(angle);
 
-                            if(circle2.body.physics.moves && !recurse)
+                            if(circle2.body.physics.moves)
                             {
-                                // var angle = Math.atan2(circle2.y - circle1.y, circle2.x - circle1.x);
-                                // var input = Math.max(0, circle2.radius + circle1.radius - Math.sqrt(this.distSq));
+                                var angle = Math.atan2(circle2.y - circle1.y, circle2.x - circle1.x);
+                                var input = Math.max(0, circle2.radius + circle1.radius - Math.sqrt(this.distSq));
 
-                                // circle2.x += input * Math.cos(angle);
-                                // circle2.y += input * Math.sin(angle);
-                                this.solveCollision(circle2, circle1, true);
+                                circle2.x += input * Math.cos(angle);
+                                circle2.y += input * Math.sin(angle);
                             }
                         }
                     },

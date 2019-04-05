@@ -73,7 +73,6 @@ function objects()
     var Block = function(x, y, width, height, color)
     {
         cse.Objects.Rect.apply(this, arguments);
-        // cse.Objects.DynamicObject.apply(this);
 
         this.draw = function()
         {
@@ -87,7 +86,6 @@ function objects()
     var Ring = function(x, y, diameter, color)
     {
         cse.Objects.Circle.apply(this, arguments);
-        // cse.Objects.DynamicObject.apply(this);
 
         this.draw = function()
         {
@@ -269,8 +267,8 @@ function main()
             cse.factory.add("block", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
                 round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-                random(5, 60), 
-                random(5, 60), 
+                random(10, 30), 
+                random(10, 30), 
                 colors[floor(random(0, colors.length))]
             ]);
         }
