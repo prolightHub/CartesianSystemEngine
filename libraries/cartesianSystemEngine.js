@@ -176,7 +176,7 @@
 			return createArray;
 		}());
 
-		C.prototype.cameraGrid = (function() 
+		C.prototype.cameraGrid = (function(c) 
 		{
 			var cameraGrid = [];
 
@@ -256,12 +256,244 @@
             };
 
 			return cameraGrid;
-		}(C.prototype.createArray));
+		}(C.prototype));
+
+		C.prototype.observer = (function(c) 
+		{
+			var observer = {
+				collisionTypes: {
+					"rectrect": {
+						colliding: function(rect1, rect2)
+						{
+							return ((rect1.x + rect1.width > rect2.x && 
+		                         	 rect1.x < rect2.x + rect2.width) && 
+		                        	(rect1.y + rect1.height > rect2.y && 
+		                         	 rect1.y < rect2.y + rect2.height));
+						},
+						getSide: function(rect1, rect2)
+		                {
+		                    /*
+		                        @dx: Difference x or the difference between both centers 
+		                             of rectangles in X-axis.
+		                             
+		                        @dy: Difference y or the difference between both centers 
+		                             of rectangles in Y-axis.
+		                    */
+		                    var dx = ((rect1.x + rect1.halfWidth) - (rect2.x + rect2.halfWidth)),
+		                        dy = ((rect1.y + rect1.halfHeight) - (rect2.y + rect2.halfHeight));
+		                    
+		                    /*Note that these values can be subsituted 
+		                      or moved down below (with ox and oy)*/
+		                    var vx = rect1.xVel + rect2.xVel,
+		                        vy = rect1.yVel + rect2.yVel;
+		                    
+		                    //Based on the last decided side ignore x or y.
+		                    if(rect1.body.side === "up" || rect1.body.side === "down")
+		                    {
+		                        vx = 0;
+		                    }
+		                    else if(rect1.body.side === "left" || rect1.body.side === "right")
+		                    {
+		                        vy = 0;
+		                    }
+
+		                    var ox = (rect1.halfWidth  + rect2.halfWidth)  - Math.abs(dx - vx),
+		                        oy = (rect1.halfHeight + rect2.halfHeight) - Math.abs(dy - vy);
+		                        
+		                    if(ox < oy)
+		                    {
+		                        if(dx < 0)
+		                        {
+		                            return "left";
+		                        }else{
+		                            return "right";
+		                        }
+		                    }else{
+		                        if(dy < 0)
+		                        {
+		                            return "up";  
+		                        }else{
+		                            return "down";  
+		                        }
+		                    }
+		                },
+		                applySide: function(side, rect1, rect2, noZero)
+		                {
+		                    switch(side)
+		                    {
+		                        case "left" :
+		                            if(rect1.gravityX)
+		                            {
+		                                rect1.inAir = (rect1.gravityX < 0);
+		                            }
+		                            rect1.xVel = (!noZero) ? 0 : rect1.xVel;
+		                            rect1.x = rect2.x - rect1.width;
+		                            break;
+		                        
+		                        case "right" :
+		                            if(rect1.gravityX)
+		                            {
+		                                rect1.inAir = (rect1.gravityX > 0);
+		                            }
+		                            rect1.xVel = (!noZero) ? 0 : rect1.xVel;
+		                            rect1.x = rect2.x + rect2.width;
+		                            break;
+		                                 
+		                        case "up" :
+		                            if(rect1.gravityY)
+		                            {
+		                                rect1.inAir = (rect1.gravityY < 0);
+		                            }
+		                            rect1.yVel = (!noZero) ? 0 : rect1.yVel;
+		                            rect1.y = rect2.y - rect1.height;
+		                            break;
+		                        
+		                        case "down" :
+		                            if(rect1.gravityY)
+		                            {
+		                                rect1.inAir = (rect1.gravityY > 0);
+		                            }
+		                            rect1.yVel = (!noZero) ? 0 : rect1.yVel;
+		                            rect1.y = rect2.y + rect2.height; 
+		                            break;
+		                    }
+		                },
+						solveCollision: function(rect1, rect2)
+						{
+							var side = this.getSide(rect1, rect2);
+
+							rect1.body.side = side;
+
+                    		var noZero;
+                    		this.applySide(side, rect1, rect2, noZero);
+
+							return {
+								side: side
+							};
+						}
+					}
+				},
+				getType: function(name1, name2, object)
+		        {
+		        	var flipped;
+		            var typeToReturn = "";
+		            var type = name1 + name2;
+
+		            if(object[type])
+		            {
+		                typeToReturn = type;
+		            }else{
+		                //Flip shapes
+		                flipped = true;
+		                type = name2 + name1;
+		                if(object[type])
+		                {
+		                    typeToReturn = type;
+		                }
+		            }
+		            return {
+		                type: typeToReturn,
+		                flipped: flipped,
+		            };
+		        },     
+				access: function(object1, object2, access)
+		        {
+		            var info = observer.getType(
+		                object1.body.physics.shape,
+		                object2.body.physics.shape,
+		                observer.collisionTypes
+		            );
+		            var colliding = false;
+
+		            if(info.flipped)
+		            {
+		            	colliding = observer.collisionTypes[info.type][access](object2, object1);              
+		            }else{
+		                colliding = observer.collisionTypes[info.type][access](object1, object2);
+		            }
+		            return colliding;
+		        },
+				colliding: function(object1, object2)
+		        {
+		            return this.access(object1, object2, "colliding");
+		        },
+		        solveCollision: function(object1, object2)
+		        {
+		            return this.access(object1, object2, "solveCollision");
+		        },
+				boundingBoxesColliding: function(box1, box2)
+		        {
+		            return (box1.minX < box2.maxX && box1.maxX > box2.minX && 
+		                    box1.minY < box2.maxY && box1.maxY > box2.minY);
+		        }
+			};
+
+			return observer;
+		}(C.prototype));
 
 		C.prototype.gameObjects = (function(c) 
 		{
 			var gameObjects = c.createArray([]);
-            
+
+			gameObjects.applyCollision = function(objectA)
+			{
+				if(!objectA.body.physics.moves)
+				{
+					return;
+				}
+
+				var used = {};
+
+				//We don't want to test objectA against it self!
+				used[objectA._arrayName + objectA._id] = true; 
+
+				var col, row, cell, i, objectB, info;
+
+                for(col = objectA._upperLeft.col; col <= objectA._lowerRight.col; col++)
+                {
+                    for(row = objectA._upperLeft.row; row <= objectA._lowerRight.row; row++)
+                    {
+                    	cell = cse.cameraGrid[col][row];
+
+		                for(i in cell)
+		                {
+		                	if(used[i])
+		                	{
+		                		continue;
+		                	}
+
+		                	// Is the same as getObject(name) and then getById(id)
+		                	objectB = this[this.references[cell[i].arrayName]].map[cell[i].id];
+
+		                	//Set tested (early before continues)
+		                	used[i] = true;
+
+		                	//Check boundingBox!
+		                	if(!c.observer.boundingBoxesColliding(objectA.body.boundingBox, objectB.body.boundingBox))
+		                    {
+		                        continue;        
+		                    }
+
+		                    if((objectA.body.physics.full && objectB.body.physics.full) || 
+		                    	c.observer.colliding(objectA, objectB))
+		                    {
+		                    	info = {};
+
+		                    	if(objectA.body.physics.solid && objectB.body.physics.solid)
+		                    	{
+		                    		info = c.observer.solveCollision(objectA, objectB);
+
+		                    		objectA.body.updateBoundingBox();
+                        			objectB.body.updateBoundingBox();   
+		                    	}
+
+		                    	objectA.onCollide(objectB, info);
+		                    	objectB.onCollide(objectA, info);
+		                    }
+		                }
+                    }
+                }
+			};
 			gameObjects.update = function(cam) 
             {
                 var used = {};
@@ -269,9 +501,9 @@
 
                 var col, row, cell, i, object, index;
 
-                for(var col = cam._upperLeft.col; col <= cam._lowerRight.col; col++)
+                for(col = cam._upperLeft.col; col <= cam._lowerRight.col; col++)
                 {
-                    for(var row = cam._upperLeft.row; row <= cam._lowerRight.row; row++)
+                    for(row = cam._upperLeft.row; row <= cam._lowerRight.row; row++)
                     {
                         cell = cse.cameraGrid[col][row];
 
@@ -284,7 +516,10 @@
 
                             // Is the same as getObject(name) and then getById(id)
                             object = this[this.references[cell[i].arrayName]].map[cell[i].id];
+
+                            // Heres where we can finally update the gameObject!
                             object.update();
+                            this.applyCollision(object);
 
                             /* Refreshes the object's cell place after it has been moved */
                             if(object.body.physics.moves)
@@ -320,34 +555,44 @@
 			return gameObjects;
 		}(C.prototype));
 
-        C.prototype.factory.add = (function(c) 
-        {
-            function add(arrayName, args)
-            {
-                var place = c.gameObjects.getObject(arrayName);
-                var object = place.add.apply(place, args);
-                c.cameraGrid.addReference(object);
-                return object;
-            }
+		C.prototype.factory = (function(c)
+		{
+			var factory = {
+				add: function(arrayName, args)
+	            {
+	                var place = c.gameObjects.getObject(arrayName);
+	                var object = place.add.apply(place, args);
+	                c.cameraGrid.addReference(object);
+	                return object;
+	            },
+	            remove: function(name, index)
+	            {
+	                var object = (c.gameObjects[c.gameObjects.references[name]] || [])[index];
+	                if(object)
+	                {
+		                c.cameraGrid.removeReference(object);
+		                delete c.gameObjects[c.gameObjects.references[name]].map[object._id];
+		                c.gameObjects[c.gameObjects.references[name]].splice(index, 1);
+		            }
+	            },
+	            addObject: function()
+	            {
+	                var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
+	                var inputObject = arguments[1] || arguments[0];
 
-            return add;
-        }(C.prototype)); 
+	                c.gameObjects.addObject(name.lower(), c.createArray(inputObject));
+	                c.Objects[name.upper()] = inputObject;
 
-        C.prototype.factory.addObject = (function(c) 
-        {
-            function addObject()
-            {
-                var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
-                var inputObject = arguments[1] || arguments[0];
+	                return inputObject;
+	            },
+	            getObject: function()
+	            {
+	            	return c.gameObjects[c.gameObjects.references[name]];
+	            }
+			};
 
-                c.gameObjects.addObject(name.lower(), c.createArray(inputObject));
-                c.Objects[name.upper()] = inputObject;
-
-                return inputObject;
-            }
-
-            return addObject;
-        }(C.prototype)); 
+			return factory;
+		}(C.prototype));
 
 		C.prototype.Objects.GameObject = (function(c) 
 		{
@@ -357,13 +602,16 @@
 					physics: {
 						shape: "",
 						moves: false,
-						solidObject: false
+						solid: false
 					},
 					boundingBox: {}
 				};
 
 				this.update = function() {};
 				this.draw = function() {};
+
+				this.remove = function() {};
+				this.onCollide = function() {};
 			}
 
 			c.gameObjects.addObject("gameObject", c.createArray(GameObject));
@@ -388,10 +636,15 @@
 				this.body.physics = {
 					shape: "rect",
 		            moves: false,
-		            solidObject: true
+		            solid: true,
+		            full: true
 				};
 
+				this.xVel = 0;
+				this.yVel = 0;
+
 				var self = this;
+
 				this.body.updateBoundingBox = function()
 				{
 					var box = this.boundingBox;
@@ -400,7 +653,6 @@
 					box.maxX = self.x + self.width;
 					box.maxY = self.y + self.height;
 				};
-
 				this.body.updateBoundingBox();
 			}
 

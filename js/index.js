@@ -1,4 +1,4 @@
-function gameObjects()
+function objects()
 {
     var Camera = function(x, y, width, height)
     {
@@ -112,28 +112,33 @@ function gameObjects()
 
         this.update = function()
         {
-            if(this.controls.left())
-            {
-                this.x -= this.xSpeed;
-            }
-            if(this.controls.right())
-            {
-                this.x += this.xSpeed;
-            }
-
-            if(this.controls.up())
-            {
-                this.y -= this.ySpeed;
-            }
-            if(this.controls.down())
-            {
-                this.y += this.ySpeed;
-            }
+            this.x += this.xVel;
+            this.y += this.yVel;
 
             this.x = constrain(this.x, cse.world.bounds.minX, cse.world.bounds.maxX - this.width);
             this.y = constrain(this.y, cse.world.bounds.minY, cse.world.bounds.maxY - this.height);
 
             this.body.updateBoundingBox();
+
+            this.xVel = 0;
+            this.yVel = 0;
+
+            if(this.controls.left())
+            {
+                this.xVel = -this.xSpeed;
+            }
+            if(this.controls.right())
+            {
+                this.xVel = this.xSpeed;
+            }
+            if(this.controls.up())
+            {
+                this.yVel = -this.ySpeed;
+            }
+            if(this.controls.down())
+            {
+                this.yVel = this.ySpeed;
+            }
         };
     };
     cse.factory.addObject("player", Player);
@@ -147,8 +152,8 @@ function preload()
         grid: {
             cols: 12,
             rows: 20,
-            cellWidth: 130,
-            cellHeight: 130
+            cellWidth: 170,
+            cellHeight: 170
         }
     };
 
@@ -208,6 +213,11 @@ function ui()
     };
     function debug()
     {
+        textSize(12);
+        textAlign(RIGHT, TOP);
+        fill(255, 255, 255, 120);
+        text('x: ' + player.x + ' y: ' + player.y, width - 12, 10);
+
         var place = cse.cameraGrid.getPlace(cam.body.boundingBox.minX + mouseX - cam.x, 
                                             cam.body.boundingBox.minY + mouseY - cam.y);
         var cell = cse.cameraGrid[place.col][place.row];
@@ -261,16 +271,28 @@ function main()
 {
     function setup()
     {
-        var blocks = cse.gameObjects.getObject("block");
-        blocks.add(243, 22, 33, 44, color(233, 4, 5));
-        blocks.add(463, 222, 33, 44, color(23, 44, 5));
-        blocks.add(243, 167, 63, 44, color(23, 4, 215));
+        cse.factory.add("block", [243, 22, 33, 44, color(233, 4, 5)]);
+        cse.factory.add("block", [463, 222, 33, 44, color(23, 44, 5)]);
+        cse.factory.add("block", [243, 167, 63, 44, color(23, 4, 115)]);
 
-        cse.gameObjects.forEach(array => array.forEach(object => cse.cameraGrid.addReference(object)));
+        var colors = [color(73, 4, 45), color(255, 255, 255, 60), color(23, 4, 25)];
+
+        for(var i = 0; i < 200; i++)
+        {
+            cse.factory.add("block", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(5, 60), 
+                random(5, 60), 
+                colors[floor(random(0, colors.length))]
+            ]);
+        }
+
+        // cse.gameObjects.forEach(array => array.forEach(object => cse.cameraGrid.addReference(object)));
     }
 
     var cam = new Camera(45, 45, width - 90, height - 90);
-    var player = cse.factory.add("player", [300, 300, 40, 40, color(0, 80, 205, 200)]);
+    var player = cse.factory.add("player", [300, 300, 36, 36, color(0, 80, 205, 200)]);
 
     setup();
     
@@ -287,9 +309,9 @@ function main()
 		popMatrix();
 
         cam.draw();
-        fpsCatcher.draw();
         debug();
 
+        fpsCatcher.draw();
         fpsCatcher.update();
 	};
 
@@ -300,4 +322,4 @@ function main()
     console.log(cse);
 }
 
-createProcessing(preload, ui, gameObjects, main);
+createProcessing(preload, ui, objects, main);
