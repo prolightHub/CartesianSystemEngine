@@ -291,14 +291,14 @@
                                 case "left":
                                     if(body1.xVel > 0)
                                     {
-                                        body2.xVel += body1.xForce || body1.xAcl * (body1.mass || 1);  
+                                        body2.xVel += body1.xForce || (body1.xAcl || 2) * (body1.mass || 1);
                                     }
                                     return true;
                                 
                                 case "right":
                                     if(body1.xVel < 0) 
                                     {
-                                        body2.xVel -= body1.xForce || body1.xAcl * (body1.mass || 1);  
+                                        body2.xVel -= body1.xForce || (body1.xAcl || 2) * (body1.mass || 1);  
                                     }
                                     return true;
                                     
@@ -481,31 +481,33 @@
                         type: typeToReturn,
                         flipped: flipped,
                     };
-                },     
+                },
                 access: function(object1, object2, access)
                 {
-                    var info = observer.getType(
-                        object1.body.physics.shape,
-                        object2.body.physics.shape,
-                        observer.collisionTypes
-                    );
-                    var colliding = false;
-
-                    if(info.flipped)
+                    if(observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape])
                     {
-                        colliding = observer.collisionTypes[info.type][access](object2, object1);              
+                        return observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape][access](object1, object2);
                     }else{
-                        colliding = observer.collisionTypes[info.type][access](object1, object2);
+                        return observer.collisionTypes[object2.body.physics.shape + object1.body.physics.shape][access](object2, object1);
                     }
-                    return colliding;
                 },
                 colliding: function(object1, object2)
                 {
-                    return this.access(object1, object2, "colliding");
+                    if(observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape])
+                    {
+                        return observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape].colliding(object1, object2);
+                    }else{
+                        return observer.collisionTypes[object2.body.physics.shape + object1.body.physics.shape].colliding(object2, object1);
+                    }
                 },
                 solveCollision: function(object1, object2)
                 {
-                    return this.access(object1, object2, "solveCollision");
+                    if(observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape])
+                    {
+                        return observer.collisionTypes[object1.body.physics.shape + object2.body.physics.shape].solveCollision(object1, object2);
+                    }else{
+                        return observer.collisionTypes[object2.body.physics.shape + object1.body.physics.shape].solveCollision(object2, object1);
+                    }
                 },
                 boundingBoxesColliding: function(box1, box2)
                 {
@@ -621,7 +623,7 @@
                 {
                     for(row = objectA._upperLeft.row; row <= objectA._lowerRight.row; row++)
                     {
-                    	cell = cse.cameraGrid[col][row];
+                    	cell = c.cameraGrid[col][row];
 
 		                for(i in cell)
 		                {
@@ -672,7 +674,7 @@
                 {
                     for(row = cam._upperLeft.row; row <= cam._lowerRight.row; row++)
                     {
-                        cell = cse.cameraGrid[col][row];
+                        cell = c.cameraGrid[col][row];
 
                         for(i in cell)
                         {
@@ -688,11 +690,11 @@
                             object.update();
                             this.applyCollision(object);
 
-                            /* Refreshes the object's cell place after it has been moved */
+                            // Refreshes the object's cell place after it has been moved 
                             if(object.body.physics.moves)
                             {
-                                cse.cameraGrid.removeReference(object);
-                                cse.cameraGrid.addReference(object);
+                                c.cameraGrid.removeReference(object);
+                                c.cameraGrid.addReference(object);
                             }
 
                             // Save info for rendering
@@ -706,7 +708,7 @@
                     }
                 }
             };
-			gameObjects.draw = function(cam) 
+			gameObjects.draw = function(cam)
 			{
                 var i, j;
 
@@ -829,8 +831,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, cse.world.bounds.minX, cse.world.bounds.maxX - self.width);
-                    self.y = Math.constrain(self.y, cse.world.bounds.minY, cse.world.bounds.maxY - self.height);
+                    self.x = Math.constrain(self.x, _c.world.bounds.minX, _c.world.bounds.maxX - self.width);
+                    self.y = Math.constrain(self.y, _c.world.bounds.minY, _c.world.bounds.maxY - self.height);
                 };
 			}
 
@@ -871,8 +873,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, cse.world.bounds.minX + self.radius, cse.world.bounds.maxX - self.radius);
-                    self.y = Math.constrain(self.y, cse.world.bounds.minY + self.radius, cse.world.bounds.maxY - self.radius);
+                    self.x = Math.constrain(self.x, _c.world.bounds.minX + self.radius, _c.world.bounds.maxX - self.radius);
+                    self.y = Math.constrain(self.y, _c.world.bounds.minY + self.radius, _c.world.bounds.maxY - self.radius);
                 };
             }
 
@@ -911,6 +913,64 @@
                     this.inAir = true;
                 };
 
+                this.body.slowX = function(xDeacl)
+                {
+                    if(!xDeacl)
+                    {
+                        return;
+                    }
+
+                    //Deaccleration
+                    if(this.xVel < 0)
+                    {
+                        this.xVel += xDeacl;
+                    }
+                    else if(this.xVel > 0)
+                    {
+                        this.xVel -= xDeacl;
+                    }
+
+                    //Stop from moving in one direction.
+                    if(Math.abs(this.xVel) <= xDeacl)
+                    {
+                        this.xVel = 0;
+                    }
+                };
+                this.body.slowY = function(yDeacl)
+                {
+                    if(!yDeacl)
+                    {
+                        return;
+                    }
+
+                    //Deaccleration
+                    if(this.yVel < 0)
+                    {
+                        this.yVel += yDeacl;
+                    }
+                    else if(this.yVel > 0)
+                    {
+                        this.yVel -= yDeacl;
+                    }
+
+                    //Stop from moving in one direction.
+                    if(Math.abs(this.yVel) <= yDeacl)
+                    {
+                        this.yVel = 0;
+                    }
+                };
+
+                this.body.slowVel = function()
+                {
+                    if(self.controls)
+                    {
+                        return;
+                    }
+
+                    this.slowX(this.xDeacl);
+                    this.slowY(this.yDeacl);
+                };
+
                 var lastUpdate = this.update;
                 this.update = function()
                 {
@@ -919,6 +979,7 @@
                     this.body.updateVel();
                     this.body.contain();
                     this.body.updateBoundingBox();
+                    this.body.slowVel();
                 };
             }
 
@@ -953,23 +1014,7 @@
                     }
                     if(!this.controls.left() && !this.controls.right())
                     {
-                        var xDeacl = this.body.xDeacl || this.body.xAcl;
-
-                        //Deaccleration
-                        if(this.body.xVel < 0)
-                        {
-                            this.body.xVel += xDeacl;
-                        }
-                        else if(this.body.xVel > 0)
-                        {
-                            this.body.xVel -= xDeacl;
-                        }
-
-                        //Stop from moving in one direction.
-                        if(Math.abs(this.body.xVel) <= xDeacl)
-                        {
-                            this.body.xVel = 0;
-                        }
+                        this.body.slowX(this.body.xDeacl);
                     }
 
                     if(this.controls.up())
@@ -982,23 +1027,7 @@
                     }
                     if(!this.controls.up() && !this.controls.down())
                     {
-                        var yDeacl = this.body.yDeacl || this.body.yAcl;
-
-                        //Deaccleration
-                        if(this.body.yVel < 0)
-                        {
-                            this.body.yVel += yDeacl;
-                        }
-                        else if(this.body.yVel > 0)
-                        {
-                            this.body.yVel -= yDeacl;
-                        }
-
-                        //Stop from moving in one direction.
-                        if(Math.abs(this.body.yVel) <= yDeacl)
-                        {
-                            this.body.yVel = 0;
-                        }
+                        this.body.slowY(this.body.yDeacl);
                     }
                 };
             }

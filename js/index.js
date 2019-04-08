@@ -73,6 +73,14 @@ function objects()
     var Block = function(x, y, width, height, color)
     {
         cse.Objects.Rect.apply(this, arguments);
+        cse.Objects.DynamicObject.apply(this);
+
+        this.body.maxXVel = 5;
+        this.body.maxYVel = 5;
+        this.body.xAcl = 2;
+        this.body.yAcl = 2;
+        this.body.xDeacl = 0.2;
+        this.body.yDeacl = 0.2;
 
         this.draw = function()
         {
@@ -86,6 +94,7 @@ function objects()
     var Ring = function(x, y, diameter, color)
     {
         cse.Objects.Circle.apply(this, arguments);
+        cse.Objects.DynamicObject.apply(this);
 
         this.draw = function()
         {
@@ -99,7 +108,7 @@ function objects()
     var Player = function(x, y, width, height, color)
     {
         Block.call(this, x, y, width, height, color);
-        cse.Objects.DynamicObject.apply(this);
+        // cse.Objects.DynamicObject.apply(this);
         cse.Objects.LifeForm.apply(this);
 
         this.controls = {
@@ -125,6 +134,8 @@ function objects()
         this.body.maxYVel = 5;
         this.body.xAcl = 2;
         this.body.yAcl = 2;
+        this.body.xDeacl = 1;
+        this.body.yDeacl = 1;
     };
     cse.factory.addObject("player", Player);
 }
@@ -260,9 +271,9 @@ function main()
         cse.factory.add("block", [463, 222, 33, 44, color(23, 44, 5)]);
         cse.factory.add("block", [243, 167, 63, 44, color(23, 4, 115)]);
 
-        var colors = [color(73, 4, 45), color(255, 255, 255, 60), color(23, 4, 25)];
+        var colors = [color(73, 4, 45), color(255, 255, 255, 60), color(23, 4, 125)];
 
-        for(var i = 0; i < 200; i++)
+        for(var i = 0; i < 100; i++)
         {
             cse.factory.add("block", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
@@ -273,7 +284,7 @@ function main()
             ]);
         }
 
-        for(var i = 0; i < 200; i++)
+        for(var i = 0; i < 100; i++)
         {
             cse.factory.add("ring", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
