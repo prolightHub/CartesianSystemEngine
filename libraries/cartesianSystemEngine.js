@@ -424,33 +424,33 @@
                             }
                             if(circle.body.physics.moves)
                             {
+                                var esc = Math.abs(circle.radius - Math.sqrt(this.dist));
+
+                                var inputX = esc * Math.cos(angle);
+                                var inputY = esc * Math.sin(angle);
+
                                 if(!rect.body.sides)
                                 {
-                                    var esc = Math.abs(circle.radius - Math.sqrt(this.dist));
-                                    circle.x -= esc * Math.cos(angle);
-                                    circle.y -= esc * Math.sin(angle);
+                                    circle.x -= inputX;
+                                    circle.y -= inputY;
                                 }else{
                                     if(rect.body.sides.left && circle.x + circle.radius <= rect.x + Math.abs(circle.body.xVel))
                                     {
-                                        // circle.y -= esc * Math.sin(angle);
                                         circle.x = rect.x - circle.radius;
                                         circle.body.xVel = 0;
                                     }
                                     if(rect.body.sides.right && circle.x - circle.radius + Math.abs(circle.body.xVel) >= rect.x + rect.width)
                                     {
-                                        // circle.y -= esc * Math.sin(angle);
                                         circle.x = rect.x + rect.width + circle.radius;
                                         circle.body.xVel = 0;
                                     }
                                     if(rect.body.sides.up && circle.y + circle.radius <= rect.y + Math.abs(circle.body.yVel))
                                     {
-                                        // circle.x -= esc * Math.cos(angle);
                                         circle.y = rect.y - circle.radius;
                                         circle.body.yVel = 0;
                                     }
                                     if(rect.body.sides.down && circle.y - circle.radius + Math.abs(circle.body.yVel) >= rect.y + rect.height)
                                     {
-                                        // circle.x -= esc * Math.cos(angle);
                                         circle.y = rect.y + rect.height + circle.radius;
                                         circle.body.yVel = 0;
                                     }
@@ -635,7 +635,7 @@
 		                	// Is the same as getObject(name) and then getById(id)
 		                	objectB = this[this.references[cell[i].arrayName]].map[cell[i].id];
 
-		                	//Set tested (early before continues)
+		                	//Set tested (early before bounding box test)
 		                	used[i] = true;
 
 		                	//Check boundingBox!
@@ -702,13 +702,13 @@
                             this.used[index] = this.used[index] || [];
                             this.used[index].push(object._id);
 
-                            // We've used the object for this loop
+                            //Show we've used the object for this loop
                             used[i] = true;
                         }
                     }
                 }
             };
-			gameObjects.draw = function(cam)
+			gameObjects.draw = function()
 			{
                 var i, j;
 
@@ -720,6 +720,35 @@
                     }
                 }
 			};
+            gameObjects.getRendered = function(prop)
+            {
+                var rendered = [];
+                var i, j;
+
+                if(!prop)
+                {
+                    for(i in this.used)
+                    {
+                        for(j = 0; j < this.used[i].length; j++)
+                        {
+                            rendered.push(this[i].map[this.used[i][j]]);
+                        }
+                    }
+                }else{
+                    for(i in this.used)
+                    {
+                        for(j = 0; j < this.used[i].length; j++)
+                        {
+                            if(this[i].map[this.used[i][j]][prop])
+                            {
+                                rendered.push(this[i].map[this.used[i][j]][prop]);
+                            }
+                        }
+                    }
+                }
+
+                return rendered;
+            };
 
 			return gameObjects;
 		}(C.prototype));
