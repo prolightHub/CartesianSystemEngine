@@ -45,7 +45,8 @@
 
 		config = config || { 
             grid: {},
-            world: {}
+            world: {},
+            camera: {}
         };
 
         config.grid = config.grid || {};
@@ -60,6 +61,11 @@
 
             c.world.bounds.maxX = c.world.width;
             c.world.bounds.maxY = c.world.height;
+
+            config.camera = config.camera || {};
+            c.camera = new C.prototype.Camera(config.camera.x || 0, config.camera.y || 0, config.camera.width || 0, config.camera.height || 0);
+            c.camera.speed = config.camera.speed || c.camera.speed;
+            c.camera.padding = (config.camera.padding || config.camera.padding === 0) ? config.camera.padding : c.camera.padding;
 
             c.noPhysics = config.noPhysics || false;
         };
@@ -519,6 +525,83 @@
             return observer;
         }(C.prototype));
 
+        C.prototype.Camera = (function(c)
+        {
+            function Camera(x, y, width, height)
+            {
+                c.Objects.Rect.apply(this, arguments);
+
+                this.focusX = this.halfWidth;
+                this.focusY = this.halfHeight;
+                this.speed = 0.1;
+                this.padding = 0;
+
+                var self = this;
+
+                this.body.updateBoundingBox = function()
+                {
+                    this.boundingBox.minX = self.focusX - self.halfWidth;
+                    this.boundingBox.minY = self.focusY - self.halfHeight;
+                    this.boundingBox.maxX = self.focusX + self.halfWidth;
+                    this.boundingBox.maxY = self.focusY + self.halfHeight;
+                };
+            }
+            Camera.prototype.follow = function(boundingBox)
+            {
+                var x = boundingBox.minX + (boundingBox.maxX - boundingBox.minX) / 2;
+                var y = boundingBox.minY + (boundingBox.maxY - boundingBox.minY) / 2;
+
+                this.angle = Math.atan2(y - this.focusY, x - this.focusX);
+                this.distance = Math.sqrt(Math.pow(Math.abs(x - this.focusX), 2) + Math.pow(Math.abs(y - this.focusY), 2)) * this.speed;
+
+                this.focusX += this.distance * Math.cos(this.angle);
+                this.focusY += this.distance * Math.sin(this.angle);
+
+                //Keep it in the grid
+                this.focusX = Math.constrain(this.focusX, _c.world.bounds.minX + this.halfWidth, _c.world.bounds.maxX - this.halfWidth);
+                this.focusY = Math.constrain(this.focusY, _c.world.bounds.minY + this.halfHeight, _c.world.bounds.maxY - this.halfHeight);
+
+                //Get the corners position on the grid
+                this._upperLeft = c.cameraGrid.getPlace(this.focusX - this.halfWidth - _c.cameraGrid.cellWidth * this.padding,
+                                                        this.focusY - this.halfHeight - _c.cameraGrid.cellHeight * this.padding);
+                this._lowerRight = c.cameraGrid.getPlace(this.focusX + this.halfWidth + _c.cameraGrid.cellWidth * this.padding, 
+                                                         this.focusY + this.halfHeight + _c.cameraGrid.cellHeight * this.padding);
+            };
+            Camera.prototype.translate = function(translate)
+            {
+                translate(this.x, this.y);
+                    
+                if((_c.world.bounds.maxX - _c.world.bounds.minX) >= this.width)
+                {
+                    translate(this.halfWidth - this.focusX, 0);
+                }else{
+                    translate(-c.world.bounds.minX, 0);
+                }
+                if((_c.world.bounds.maxY - _c.world.bounds.minY) >= this.height)
+                {
+                    translate(0, this.halfHeight - this.focusY);
+                }else{
+                    translate(0, -_c.world.bounds.minY);
+                }
+            };
+            Camera.prototype.setTranslate = function(translate)
+            {
+                this._translate = translate;
+            };
+            Camera.prototype.view = function(object, translate)
+            {
+                this.follow(object.body.boundingBox);
+                this.body.updateBoundingBox();
+
+                if(translate || this._translate)
+                {
+                    this.translate(translate || this._translate);
+                }
+            };
+
+            return Camera;
+        }(C.prototype));
+
 		C.prototype.cameraGrid = (function(c) 
 		{
 			var cameraGrid = [];
@@ -668,6 +751,8 @@
                 var used = {};
                 this.used = {};
 
+                cam = cam || _c.camera;
+
                 var col, row, cell, i, object, index;
 
                 for(col = cam._upperLeft.col; col <= cam._lowerRight.col; col++)
@@ -720,34 +805,32 @@
                     }
                 }
 			};
-            gameObjects.getRendered = function(prop)
+
+            /* Non-essentials */
+            gameObjects.getObjectsInCam = function()
             {
-                var rendered = [];
+                var objects = [];
                 var i, j;
 
-                if(!prop)
+                for(i in this.used)
                 {
-                    for(i in this.used)
+                    for(j = 0; j < this.used[i].length; j++)
                     {
-                        for(j = 0; j < this.used[i].length; j++)
-                        {
-                            rendered.push(this[i].map[this.used[i][j]]);
-                        }
-                    }
-                }else{
-                    for(i in this.used)
-                    {
-                        for(j = 0; j < this.used[i].length; j++)
-                        {
-                            if(this[i].map[this.used[i][j]][prop])
-                            {
-                                rendered.push(this[i].map[this.used[i][j]][prop]);
-                            }
-                        }
+                        objects.push(this[i].map[this.used[i][j]]);
                     }
                 }
 
-                return rendered;
+                return objects;
+            };
+            gameObjects.eachObjectsInCam = function(callback)
+            {
+                for(i in this.used)
+                {
+                    for(j = 0; j < this.used[i].length; j++)
+                    {
+                        callback(this[i].map[this.used[i][j]]);
+                    }
+                }
             };
 
 			return gameObjects;
