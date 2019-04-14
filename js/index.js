@@ -18,17 +18,21 @@ function objects()
         cse.Objects.Block.apply(this, arguments);
         cse.Objects.DynamicObject.apply(this);
 
-        this.body.maxXVel = 5;
-        this.body.maxYVel = 16;
-        this.body.xAcl = 2;
-        this.body.yAcl = 2;
-        this.body.xDeacl = 0.5;
-        this.body.yDeacl = 0;
+        // this.body.maxXVel = 5;
+        // this.body.maxYVel = 16;
+        // this.body.xAcl = 2;
+        // this.body.yAcl = 2;
+        // this.body.xDeacl = 2;
+        // this.body.yDeacl = 0;
 
-        this.body.gravityY = -0.45;
-        this.body.jumpHeight = 13;
+        // this.body.gravityY = 0.45;
+        // this.body.jumpHeight = 13;
 
-        this.body.limits.down = Infinity;
+        // this.body.xForce = 2;
+        // this.body.yForce = 0;
+        // this.body.upForce = 4;
+
+        // this.body.limits.down = Infinity;
     };
     cse.factory.addObject("crate", Crate);
 
@@ -50,17 +54,17 @@ function objects()
         cse.Objects.Ring.apply(this, arguments);
         cse.Objects.DynamicObject.apply(this);
 
-        this.body.maxXVel = 5;
-        this.body.maxYVel = 16;
-        this.body.xAcl = 2;
-        this.body.yAcl = 2;
-        this.body.xDeacl = 0.5;
-        this.body.yDeacl = 0;
+        // this.body.maxXVel = 5;
+        // this.body.maxYVel = 16;
+        // this.body.xAcl = 2;
+        // this.body.yAcl = 2;
+        // this.body.xDeacl = 2;
+        // this.body.yDeacl = 0;
 
-        this.body.gravityY = 0.45;
-        this.body.jumpHeight = 13;
+        // this.body.gravityY = 0.45;
+        // this.body.jumpHeight = 13;
 
-        this.body.limits.down = Infinity;
+        // this.body.limits.down = Infinity;
     };
     cse.factory.addObject("ball", Ball);
 
@@ -89,17 +93,21 @@ function objects()
             },
         };
 
-        this.body.maxXVel = 4;
-        this.body.maxYVel = 16;
-        this.body.xAcl = 2;
-        this.body.yAcl = 2;
-        this.body.xDeacl = 0;
-        this.body.yDeacl = 0;
+        // this.body.maxXVel = 4;
+        // this.body.maxYVel = 16;
+        // this.body.xAcl = 2;
+        // this.body.yAcl = 2;
+        // this.body.xDeacl = 1;
+        // this.body.yDeacl = 0;
 
-         this.body.gravityY = 0.45;
-        this.body.jumpHeight = 13;
+        // this.body.gravityY = 0.45;
+        // this.body.jumpHeight = 12;
 
-        this.body.limits.down = Infinity;
+        // this.body.xForce = 2;
+        // this.body.yForce = 0;
+        // this.body.upForce = 4;
+
+        // this.body.limits.down = Infinity;
     };
     cse.factory.addObject("player", Player);
 }
@@ -118,7 +126,8 @@ function ui()
         textSize(12);
         textAlign(RIGHT, TOP);
         fill(255, 255, 255, 120);
-        text('x: ' + player.x.toFixed(0) + ' y: ' + player.y.toFixed(), width - 12, 10);
+        text('x: ' + player.x.toFixed(0) + ' y: ' + player.y.toFixed(0), width - 12, 10);
+        text('x: ' + player.body.xVel.toFixed(0) + ' y: ' + player.body.yVel.toFixed(0), width - 12, 34);
 
         var place = cse.cameraGrid.getPlace(cam.body.boundingBox.minX + mouseX - cam.x, 
                                             cam.body.boundingBox.minY + mouseY - cam.y);
@@ -191,6 +200,22 @@ function preload()
 
     window.cse = new CartesianSystemEngine(config);
 
+    var body = cse.Overrides.GameObject.body;
+
+    body.maxXVel = 5;
+    body.maxYVel = 16;
+    body.xAcl = 2;
+    body.yAcl = 2;
+    body.xDeacl = 1;
+    body.yDeacl = 0;
+
+    body.gravityY = 0.45;
+    body.jumpHeight = 13;
+
+    body.xForce = 4;
+    body.yForce = 0;
+    body.upForce = 4;
+
     const keys = [];
     var keyPressed = function()
     {
@@ -249,19 +274,20 @@ function main()
         ]);
 
         cse.factory.add("block", [
-            200, 524, 400, 40,
+            200, 450, 400, 40,
             color(23, 4, 125, 150)
         ]);
 
         cse.factory.add("block", [
-            600, 124, 40, 440,
-            color(23, 4, 125, 150)
+            600, 124, 40, 440, 
+            color(23, 4, 125, 150) 
         ]);
 
-        cse.factory.add("crate", [
-            350, 254, 23, 34,
-            color(23, 4, 125, 150)
-        ]);
+        cse.factory.add("crate", [ 350, 254, 23, 34, color(23, 4, 125, 150) ]);
+        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
+        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
+        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
+        // cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
 
         // for(var i = 0; i < 500; i++)
         // {
@@ -306,7 +332,7 @@ function main()
         // }
     }
 
-    window.player = cse.factory.add("player", [464, 340, 36, 36, color(0, 80, 205, 200)]);
+    window.player = cse.factory.add("player", [350, 340, 34, 34, color(0, 80, 205, 200)]);
     var cam = cse.camera;
     cam.draw = function()
     {

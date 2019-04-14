@@ -46,7 +46,8 @@
 		config = config || { 
             grid: {},
             world: {},
-            camera: {}
+            camera: {},
+            overrides: {}
         };
 
         config.grid = config.grid || {};
@@ -66,6 +67,11 @@
             c.camera = new C.prototype.Camera(config.camera.x || 0, config.camera.y || 0, config.camera.width || 0, config.camera.height || 0);
             c.camera.speed = config.camera.speed || c.camera.speed;
             c.camera.padding = (config.camera.padding || config.camera.padding === 0) ? config.camera.padding : c.camera.padding;
+            c.Overrides = {
+                GameObject: {
+                    body: {}
+                }
+            };
 
             c.noPhysics = config.noPhysics || false;
         };
@@ -216,8 +222,8 @@
                             
                             /*Note that these values can be subsituted 
                               or moved down below (with ox and oy)*/
-                            var vx = rect1.body.xVel + rect2.body.xVel,
-                                vy = rect1.body.yVel + rect2.body.yVel;
+                            var vx = rect1.body.xVel + (rect2.body.xVel || 0),
+                                vy = rect1.body.yVel + (rect2.body.yVel || 0);
                             
                             //Based on the last decided side ignore x or y.
                             if(rect1.body.side === "up" || rect1.body.side === "down" || rect1.body.side === "")
@@ -254,47 +260,79 @@
                             switch(side)
                             {
                                 case "left":
+                                    rect1.x = rect2.x - rect1.width;
+
                                     if(rect1.body.gravityX)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityX < 0);
-                                        rect1.body.xVel = (!noZero) ? 0 : Math.min(0, rect1.body.xVel);
                                     }else{
                                         rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
+                                        return;
                                     }
-                                    rect1.x = rect2.x - rect1.width;
+                                    
+                                    if(rect1.body.inAir && noZero && rect2.body.upForce && rect1.body.xVel >= 0)
+                                    {
+                                        rect2.body.xVel = Math.max(rect2.body.xVel, rect2.body.upForce);    
+                                    }else{
+                                        rect1.body.xVel = (!noZero) ? 0 : Math.min(0, rect1.body.xVel);
+                                    }
                                     break;
                                 
                                 case "right":
+                                    rect1.x = rect2.x + rect2.width;
+
                                     if(rect1.body.gravityX)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityX > 0);
-                                        rect1.body.xVel = (!noZero) ? 0 : Math.max(0, rect1.body.xVel);
                                     }else{
                                         rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
+                                        return;
                                     }
-                                    rect1.x = rect2.x + rect2.width;
+
+                                    if(rect1.body.inAir && noZero && rect2.body.upForce && rect1.body.xVel <= 0)
+                                    {
+                                        rect2.body.xVel = Math.min(rect2.body.xVel, -rect2.body.upForce); 
+                                    }else{
+                                        rect1.body.xVel = (!noZero) ? 0 : Math.max(0, rect1.body.xVel);
+                                    }
                                     break;
                                          
                                 case "up":
+                                    rect1.y = rect2.y - rect1.height;
+
                                     if(rect1.body.gravityY)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityY < 0);
-                                        rect1.body.yVel = (!noZero) ? 0 : Math.min(0, rect1.body.yVel);
                                     }else{
                                         rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
+                                        return;
                                     }
-                                    rect1.y = rect2.y - rect1.height;
+                                    
+                                    if(rect1.body.inAir && noZero && rect2.body.upForce && rect1.body.yVel >= 0)
+                                    {
+                                        rect2.body.yVel = Math.max(rect2.body.yVel, rect2.body.upForce);    
+                                    }else{
+                                        rect1.body.yVel = (!noZero) ? 0 : Math.min(0, rect1.body.yVel);
+                                    }
                                     break;
                                 
                                 case "down":
+                                    rect1.y = rect2.y + rect2.height;
+
                                     if(rect1.body.gravityY)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityY > 0);
-                                        rect1.body.yVel = (!noZero) ? 0 : Math.max(0, rect1.body.yVel);
                                     }else{
                                         rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
+                                        return;
                                     }
-                                    rect1.y = rect2.y + rect2.height; 
+    
+                                    if(rect1.body.inAir && noZero && rect2.body.upForce && rect1.body.yVel <= 0)
+                                    {
+                                        rect2.body.yVel = Math.min(rect2.body.yVel, -rect2.body.upForce);    
+                                    }else{
+                                        rect1.body.yVel = (!noZero) ? 0 : Math.max(0, rect1.body.yVel);
+                                    }
                                     break;
                             }
                         },
@@ -917,6 +955,12 @@
 	                var place = c.gameObjects.getObject(arrayName);
 	                var object = place.add.apply(place, args);
 	                c.cameraGrid.addReference(object);
+
+                    for(var i in _c.Overrides.GameObject.body)
+                    {
+                        object.body[i] = _c.Overrides.GameObject.body[i];
+                    }
+
 	                return object;
 	            },
 	            remove: function(name, index)
@@ -1090,6 +1134,10 @@
 
                 this.body.inAir = false;
                 this.body.physics.moves = true; 
+
+                this.body.xForce = 0;
+                this.body.yForce = 0;
+                this.body.upForce = 0;
 
                 var self = this;
                 this.body.updateVel = function()
