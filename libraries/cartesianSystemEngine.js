@@ -257,8 +257,10 @@
                                     if(rect1.body.gravityX)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityX < 0);
+                                        rect1.body.xVel = (!noZero) ? 0 : Math.min(0, rect1.body.xVel);
+                                    }else{
+                                        rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
                                     }
-                                    rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
                                     rect1.x = rect2.x - rect1.width;
                                     break;
                                 
@@ -266,8 +268,10 @@
                                     if(rect1.body.gravityX)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityX > 0);
+                                        rect1.body.xVel = (!noZero) ? 0 : Math.max(0, rect1.body.xVel);
+                                    }else{
+                                        rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
                                     }
-                                    rect1.body.xVel = (!noZero) ? 0 : rect1.body.xVel;
                                     rect1.x = rect2.x + rect2.width;
                                     break;
                                          
@@ -275,8 +279,10 @@
                                     if(rect1.body.gravityY)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityY < 0);
+                                        rect1.body.yVel = (!noZero) ? 0 : Math.min(0, rect1.body.yVel);
+                                    }else{
+                                        rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
                                     }
-                                    rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
                                     rect1.y = rect2.y - rect1.height;
                                     break;
                                 
@@ -284,8 +290,10 @@
                                     if(rect1.body.gravityY)
                                     {
                                         rect1.body.inAir = (rect1.body.gravityY > 0);
+                                        rect1.body.yVel = (!noZero) ? 0 : Math.max(0, rect1.body.yVel);
+                                    }else{
+                                        rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
                                     }
-                                    rect1.body.yVel = (!noZero) ? 0 : rect1.body.yVel;
                                     rect1.y = rect2.y + rect2.height; 
                                     break;
                             }
@@ -424,6 +432,71 @@
 
                             if(rect.body.physics.moves)
                             {
+                                /* Velocity and Jumping */
+
+                                /* X */
+                                if(rect.body.gravityX < 0)
+                                {
+                                    rect.body.xVel = 0;
+                                    rect.body.inAir = (rect.xPos <= circle.xPos);
+                                }
+                                else if(rect.body.gravityX > 0)
+                                {
+                                    rect.body.xVel = 0;
+                                    rect.body.inAir = (rect.xPos + rect.width >= circle.xPos);
+                                }
+
+                                /* Y */
+                                if(rect.body.gravityY < 0)
+                                {
+                                    rect.body.yVel = 0;
+                                    rect.body.inAir = (rect.yPos <= circle.yPos);
+                                }
+                                else if(rect.body.gravityY > 0)
+                                {
+                                    rect.body.yVel = 0;
+                                    rect.body.inAir = (rect.yPos + rect.height >= circle.yPos);
+                                }
+
+                                /* Sides */
+
+                                var PADDING = 1;
+
+                                /* X */
+                                if(circle.y > rect.y && circle.y < rect.y + rect.height)
+                                {
+                                    if(rect.x + rect.width <= circle.x - circle.radius + PADDING)
+                                    {
+                                        // Left
+                                        rect.x = circle.x - circle.radius - rect.width;
+                                        return;
+                                    }
+                                    else if(rect.x >= circle.x + circle.radius - PADDING)
+                                    {
+                                        // Right
+                                        rect.x = circle.x + circle.radius;
+                                        return;
+                                    }
+                                }
+
+                                /* Y */
+                                if(circle.x > rect.x && circle.x < rect.x + rect.width)
+                                {
+                                    if(rect.y + rect.height <= circle.y - circle.radius + PADDING)
+                                    {
+                                        // Top
+                                        rect.y = circle.y - circle.radius - rect.height;
+                                        return;
+                                    }
+                                    else if(rect.y >= circle.y + circle.radius - PADDING)
+                                    {
+                                        // Bottom
+                                        rect.y = circle.y + circle.radius;
+                                        return;
+                                    }
+                                }
+
+                                /* Circlings */
                                 var cBox = circle.body.boundingBox;
                                 rect.x = Math.constrain(circle.x + (circle.radius + rect._halfHyp) * Math.cos(angle) - rect.halfWidth, cBox.minX - rect.width, cBox.maxX);
                                 rect.y = Math.constrain(circle.y + (circle.radius + rect._halfHyp) * Math.sin(angle) - rect.halfHeight, cBox.minY - rect.height, cBox.maxY);
@@ -885,7 +958,13 @@
 						moves: false,
 						solid: false
 					},
-					boundingBox: {},
+                    limits: {
+                        left: 0,
+                        right: 0,
+                        up: 0,
+                        down: 0
+                    },
+                    boundingBox: {},
 
                     xVel: 0,
                     yVel: 0
@@ -943,8 +1022,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, _c.world.bounds.minX, _c.world.bounds.maxX - self.width);
-                    self.y = Math.constrain(self.y, _c.world.bounds.minY, _c.world.bounds.maxY - self.height);
+                    self.x = Math.constrain(self.x, _c.world.bounds.minX - this.limits.left, _c.world.bounds.maxX - self.width + this.limits.right);
+                    self.y = Math.constrain(self.y, _c.world.bounds.minY - this.limits.up, _c.world.bounds.maxY - self.height + this.limits.down);
                 };
 			}
 
@@ -985,8 +1064,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, _c.world.bounds.minX + self.radius, _c.world.bounds.maxX - self.radius);
-                    self.y = Math.constrain(self.y, _c.world.bounds.minY + self.radius, _c.world.bounds.maxY - self.radius);
+                    self.x = Math.constrain(self.x, _c.world.bounds.minX + self.radius - this.limits.left, _c.world.bounds.maxX - self.radius + this.limits.right);
+                    self.y = Math.constrain(self.y, _c.world.bounds.minY + self.radius - this.limits.up, _c.world.bounds.maxY - self.radius + this.limits.down);
                 };
             }
 
@@ -1007,6 +1086,7 @@
 
                 this.body.gravityX = 0;
                 this.body.gravityY = 0;
+                this.body.jumpHeight = 0;
 
                 this.body.inAir = false;
                 this.body.physics.moves = true; 
@@ -1114,15 +1194,29 @@
                 var lastUpdate = this.update;
                 this.update = function()
                 {
-                    lastUpdate.apply(this, arguments);
-
                     if(this.controls.left())
                     {
-                        this.body.xVel -= this.body.xAcl;
+                        if(!this.body.gravityX)
+                        {
+                            this.body.xVel -= this.body.xAcl;
+                        }
+
+                        if(!this.body.inAir && this.body.gravityX > 0)
+                        {
+                            this.body.xVel = -this.body.jumpHeight;
+                        }
                     }
                     if(this.controls.right())
                     {
-                        this.body.xVel += this.body.xAcl;
+                        if(!this.body.gravityX)
+                        {
+                            this.body.xVel += this.body.xAcl;
+                        }
+
+                        if(!this.body.inAir && this.body.gravityX < 0)
+                        {
+                            this.body.xVel = this.body.jumpHeight;
+                        }
                     }
                     if(!this.controls.left() && !this.controls.right())
                     {
@@ -1131,16 +1225,34 @@
 
                     if(this.controls.up())
                     {
-                        this.body.yVel -= this.body.yAcl;
+                        if(!this.body.gravityY)
+                        {
+                            this.body.yVel -= this.body.yAcl;
+                        }
+
+                        if(!this.body.inAir && this.body.gravityY > 0)
+                        {
+                            this.body.yVel = -this.body.jumpHeight;
+                        }
                     }
                     if(this.controls.down())
                     {
-                        this.body.yVel += this.body.yAcl;
+                        if(!this.body.gravityY)
+                        {
+                            this.body.yVel += this.body.yAcl;
+                        }
+
+                        if(!this.body.inAir && this.body.gravityY < 0)
+                        {
+                            this.body.yVel = this.body.jumpHeight;
+                        }
                     }
                     if(!this.controls.up() && !this.controls.down())
                     {
                         this.body.slowY(this.body.yDeacl);
                     }
+
+                    lastUpdate.apply(this, arguments);
                 };
             }
 

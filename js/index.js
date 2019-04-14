@@ -19,11 +19,16 @@ function objects()
         cse.Objects.DynamicObject.apply(this);
 
         this.body.maxXVel = 5;
-        this.body.maxYVel = 5;
+        this.body.maxYVel = 16;
         this.body.xAcl = 2;
         this.body.yAcl = 2;
-        this.body.xDeacl = 0.2;
-        this.body.yDeacl = 0.2;
+        this.body.xDeacl = 0.5;
+        this.body.yDeacl = 0;
+
+        this.body.gravityY = -0.45;
+        this.body.jumpHeight = 13;
+
+        this.body.limits.down = Infinity;
     };
     cse.factory.addObject("crate", Crate);
 
@@ -46,11 +51,16 @@ function objects()
         cse.Objects.DynamicObject.apply(this);
 
         this.body.maxXVel = 5;
-        this.body.maxYVel = 5;
+        this.body.maxYVel = 16;
         this.body.xAcl = 2;
         this.body.yAcl = 2;
-        this.body.xDeacl = 0.2;
-        this.body.yDeacl = 0.2;
+        this.body.xDeacl = 0.5;
+        this.body.yDeacl = 0;
+
+        this.body.gravityY = 0.45;
+        this.body.jumpHeight = 13;
+
+        this.body.limits.down = Infinity;
     };
     cse.factory.addObject("ball", Ball);
 
@@ -80,11 +90,16 @@ function objects()
         };
 
         this.body.maxXVel = 4;
-        this.body.maxYVel = 4;
+        this.body.maxYVel = 16;
         this.body.xAcl = 2;
         this.body.yAcl = 2;
-        this.body.xDeacl = 1;
-        this.body.yDeacl = 1;
+        this.body.xDeacl = 0;
+        this.body.yDeacl = 0;
+
+         this.body.gravityY = 0.45;
+        this.body.jumpHeight = 13;
+
+        this.body.limits.down = Infinity;
     };
     cse.factory.addObject("player", Player);
 }
@@ -166,10 +181,10 @@ function preload()
             cellHeight: 240
         },
         camera: {
-            x: 40,
-            y: 40,
-            width: width - 80,
-            height: height - 80,
+            x: 0,
+            y: 0,
+            width: width,
+            height: height
         },
         noPhysics: false
     };
@@ -223,54 +238,75 @@ function main()
 {
     function setup()
     {
-        cse.factory.add("block", [243, 22, 33, 44, color(233, 4, 5)]);
-        cse.factory.add("block", [463, 222, 33, 44, color(23, 44, 5)]);
-        cse.factory.add("block", [243, 167, 140, 44, color(23, 4, 115)]);
+        cse.factory.add("block", [
+            200, 164, 40, 360,
+            color(23, 4, 125, 150)
+        ]);
 
-        for(var i = 0; i < 500; i++)
-        {
-            cse.factory.add("block", [
-                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-                random(10, 30), 
-                random(10, 30), 
-                color(23, 4, 125)
-            ]);
-        }
+        cse.factory.add("block", [
+            200, 124, 400, 40,
+            color(23, 4, 125, 150)
+        ]);
 
-        for(var i = 0; i < 500; i++)
-        {
-            cse.factory.add("crate", [
-                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-                random(10, 30), 
-                random(10, 30), 
-                color(23, 124, 125)
-            ]);
-        }
+        cse.factory.add("block", [
+            200, 524, 400, 40,
+            color(23, 4, 125, 150)
+        ]);
 
-        for(var i = 0; i < 300; i++)
-        {
-            cse.factory.add("ring", [
-                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-                random(20, 60), 
-                color(73, 4, 45)
-            ]);
-        }
+        cse.factory.add("block", [
+            600, 124, 40, 440,
+            color(23, 4, 125, 150)
+        ]);
 
-        for(var i = 0; i < 300; i++)
-        {
-            cse.factory.add("ball", [
-                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-                random(20, 60), 
-                color(23, 124, 125)
-            ]);
-        }
+        cse.factory.add("crate", [
+            350, 254, 23, 34,
+            color(23, 4, 125, 150)
+        ]);
+
+        // for(var i = 0; i < 500; i++)
+        // {
+        //     cse.factory.add("block", [
+        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+        //         random(10, 30) * 4, 
+        //         random(10, 30) * 4, 
+        //         color(23, 4, 125)
+        //     ]);
+        // }
+
+        // for(var i = 0; i < 500; i++)
+        // {
+        //     cse.factory.add("crate", [
+        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+        //         random(10, 30), 
+        //         random(10, 30), 
+        //         color(23, 124, 125)
+        //     ]);
+        // }
+
+        // for(var i = 0; i < 300; i++)
+        // {
+        //     cse.factory.add("ring", [
+        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+        //         random(30, 80), 
+        //         color(73, 4, 45)
+        //     ]);
+        // }
+
+        // for(var i = 0; i < 300; i++)
+        // {
+        //     cse.factory.add("ball", [
+        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+        //         random(20, 60), 
+        //         color(23, 124, 125)
+        //     ]);
+        // }
     }
 
-    window.player = cse.factory.add("player", [300, 300, 36, 36, color(0, 80, 205, 200)]);
+    window.player = cse.factory.add("player", [464, 340, 36, 36, color(0, 80, 205, 200)]);
     var cam = cse.camera;
     cam.draw = function()
     {
@@ -285,6 +321,8 @@ function main()
 
     cam.setTranslate(translate);
 
+    /*Todo: Make CSE have its own optional event loop and add gravity physics.*/
+
 	draw = function()
 	{
 		background(0, 0, 0);
@@ -293,9 +331,9 @@ function main()
             cse.camera.view(player);
             cse.gameObjects.update();
 			cse.gameObjects.draw();
-            
+
             cse.cameraGrid.draw();
-            cse.world.draw();
+            // cse.world.draw();
 		popMatrix();
 
         cam.draw();
