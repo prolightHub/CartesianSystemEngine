@@ -3,10 +3,14 @@
     /* Tweens are a collection of helper functions */
     var Tweens = this.Tweens = {
         String: {
+
+            // Changes the first letter of a word to upper case.
             upper: function(str)
             {
                 return str.charAt(0).toUpperCase() + str.slice(1);
             },
+
+            // Changes the first letter of a word to lower case.
             lower: function(str)
             {
                 return str.charAt(0).toLowerCase() + str.slice(1);
@@ -22,7 +26,7 @@
 
     Object.defineProperty(Tweens, 'NOOP', 
     {
-        // No-operation
+        // No-operation function used when it's too expensive to detect wether a function exists or not.
         value: function NOOP() 
         {
             // NOOP 
@@ -39,6 +43,7 @@
 
         C.prototype.Objects = {};
         C.prototype.factory = {};
+
         c.world = {
             width: 0,
             height: 0,
@@ -53,10 +58,14 @@
 		//Lets the entire project know that we have initiated the project.
 		c.initiated = init(this, C);
 
-		if(!c.initiated)
+		if(typeof c.initiated === "string")
 		{
-			throw ("The engine failed to initiate with error code '" + c.initiated + "'");
+			console.warn("The engine failed to initiate with error code '" + c.initiated + "'");
 		}
+        else if(!c.initiated)
+        {
+            console.warn("The engine faild to initiate");
+        }
 
 		config = config || { 
             grid: {},
@@ -70,24 +79,27 @@
 
         C.prototype.setup = function()
         {
+            // Sets up the cameraGrid or the grid the essentially runs fabrication of the world's gameobject's.
         	C.prototype.cameraGrid.setup(config.grid.cols || 1, config.grid.rows || 1, config.grid.cellWidth || 0, config.grid.cellHeight || 0);
 
+            // The bounds of the world.
             c.world.width = config.world.width || config.grid.cols * config.grid.cellWidth;
             c.world.height = config.world.height || config.grid.rows * config.grid.cellHeight;
-
             c.world.bounds.maxX = c.world.width;
             c.world.bounds.maxY = c.world.height;
 
+            // Setup the camera
             config.camera = config.camera || {};
             c.camera = new C.prototype.Camera(config.camera.x || 0, config.camera.y || 0, config.camera.width || 0, config.camera.height || 0);
             c.camera.speed = config.camera.speed || c.camera.speed;
             c.camera.padding = (config.camera.padding || config.camera.padding === 0) ? config.camera.padding : c.camera.padding;
+
+            // Setup overrides for each gameobject on runtime
             c.Overrides = {
                 GameObject: {
                     body: {}
                 }
             };
-
             c.noPhysics = config.noPhysics || false;
         };
 
@@ -96,120 +108,134 @@
 
 	function init(c, C)
 	{
-		"use strict";
+        "use strict";
 
-        var _c = c;
+        try{
+		    Engine(c, C);
+		    GameObjects(c, C);
+        }
+        catch(e)
+        {
+            return e;
+        }
 
-		C.prototype.createArray = (function()
-		{
-			function createArray(object, array, arrayName)
-			{
-				array = array || [];
-				array.references = {};
-				array.temp = {
-					empty: 0
-				};
-				array.map = {};
-				array._name = arrayName || Tweens.String.lower(object.name || "");
+		return true;
+	}
 
-				var args, i;
-				array.add = function()
-				{	
-			        i = this.length;
+    function Engine(_instance_, C)
+    {
+        "use strict";
 
-					if(object.apply !== undefined)
-			        {
-			            //Instatiate
-			            var item = Object.create(object.prototype);
-			            object.apply(item, arguments);
-			            this.push(item);
-			        }else{
-			            this.push(Array.prototype.slice.call(arguments)[0]);
-			        }
+        C.prototype.createArray = (function(c)
+        {
+            function createArray(object, array, arrayName)
+            {
+                array = array || [];
+                array.references = {};
+                array.temp = {
+                    empty: 0
+                };
+                array.map = {};
+                array._name = arrayName || Tweens.String.lower(object.name || "");
 
-			        this.map[i + this.temp.empty] = this[i];
+                var args, i;
+                array.add = function()
+                {   
+                    i = this.length;
 
-			        var item = this[i];
-			        item._id = i + this.temp.empty;
-			        item._name = this.temp.name || (object.name || "");
-			        item._arrayName = this._name;
+                    if(object.apply !== undefined)
+                    {
+                        //Instatiate
+                        var item = Object.create(object.prototype);
+                        object.apply(item, arguments);
+                        this.push(item);
+                    }else{
+                        this.push(Array.prototype.slice.call(arguments)[0]);
+                    }
 
-			        delete this.temp.name;
-			        return item;
-				};
-				array.addObject = function(name)
-				{
-					if(this.references[name] !== undefined)
-					{
-						return;
-					}
+                    this.map[i + this.temp.empty] = this[i];
 
-					this.references[name] = this.length;
-					args = Array.prototype.slice.call(arguments);
-					this.temp.name = args.shift();
-					return this.add.apply(this, args);
-				};
-				array.getObject = function(name)
-				{
-					return this[this.references[name]];
-				};
-				array.removeObject = function(name)
-				{
-					if(typeof this.references[name] === "number")
-			        {
-			        	delete this.map[array[this.references[name]]._id];
-			        	this.temp.empty++;
-			            this.splice(this.references[name], 1);
-			            delete this.references[name];
-			        }
-				};
-				array.remove = function(index)
-				{
-					this.removeFromMap(this[index]._id);
-					this.splice(index, 1);
-				};
-				array.removeFromMap = function(id)
-				{
-					delete this.map[id];
-		        	this.temp.empty++;
-				};
-				array.getById = function(id)
-			    {
-			        return this.map[id];
-			    };
+                    var item = this[i];
+                    item._id = i + this.temp.empty;
+                    item._name = this.temp.name || (object.name || "");
+                    item._arrayName = this._name;
 
-			    /*Call this after removing items from the array, 
-			    like splice or other functions*/
-			    array.refresh = function() 
-			    {
-			    	this.map = {};
+                    delete this.temp.name;
+                    return item;
+                };
+                array.addObject = function(name)
+                {
+                    if(this.references[name] !== undefined)
+                    {
+                        return;
+                    }
 
-			    	var maxId = 0;
-			    	for(var i = 0; i < this.length; i++)
-			    	{
-			    		this.map[this[i]._id] = this[i];
+                    this.references[name] = this.length;
+                    args = Array.prototype.slice.call(arguments);
+                    this.temp.name = args.shift();
+                    return this.add.apply(this, args);
+                };
+                array.getObject = function(name)
+                {
+                    return this[this.references[name]];
+                };
+                array.removeObject = function(name)
+                {
+                    if(typeof this.references[name] === "number")
+                    {
+                        delete this.map[array[this.references[name]]._id];
+                        this.temp.empty++;
+                        this.splice(this.references[name], 1);
+                        delete this.references[name];
+                    }
+                };
+                array.remove = function(index)
+                {
+                    this.removeFromMap(this[index]._id);
+                    this.splice(index, 1);
+                };
+                array.removeFromMap = function(id)
+                {
+                    delete this.map[id];
+                    this.temp.empty++;
+                };
+                array.getById = function(id)
+                {
+                    return this.map[id];
+                };
 
-			    		if(maxId < this[i]._id)
-			    		{
-			    			maxId = this[i]._id;
-			    		}
-			    	}
+                /*Call this after removing items from the array, 
+                like splice or other functions*/
+                array.refresh = function() 
+                {
+                    this.map = {};
 
-			    	this.temp.empty = (maxId - this.length) + 1;
-			    };
-				array.act = function(name)
-				{
-					for(var i = 0; i < this.length; i++)
-					{
-						this[i][name]();
-					}
-				};
+                    var maxId = 0;
+                    for(var i = 0; i < this.length; i++)
+                    {
+                        this.map[this[i]._id] = this[i];
 
-			    return array;
-			}
+                        if(maxId < this[i]._id)
+                        {
+                            maxId = this[i]._id;
+                        }
+                    }
 
-			return createArray;
-		}());
+                    this.temp.empty = (maxId - this.length) + 1;
+                };
+                array.act = function(name)
+                {
+                    for(var i = 0; i < this.length; i++)
+                    {
+                        this[i][name]();
+                    }
+                };
+
+                return array;
+            }
+
+            return createArray;
+        }());
 
         C.prototype.observer = (function(c) 
         {
@@ -563,6 +589,7 @@
 
                                 if(!rect.body.sides)
                                 {
+                                    // No sides are set so use normal collision
                                     circle.x -= inputX;
                                     circle.y -= inputY;
                                 }else{
@@ -641,6 +668,8 @@
                         return observer.collisionTypes[object2.body.physics.shape + object1.body.physics.shape].solveCollision(object2, object1);
                     }
                 },
+
+                // Used to decide whether an object's bounding box is colliding before checking full collision
                 boundingBoxesColliding: function(box1, box2)
                 {
                     return (box1.minX < box2.maxX && box1.maxX > box2.minX && 
@@ -684,30 +713,30 @@
                 this.focusY += this.distance * Math.sin(this.angle);
 
                 //Keep it in the grid
-                this.focusX = Tweens.Math.constrain(this.focusX, _c.world.bounds.minX + this.halfWidth, _c.world.bounds.maxX - this.halfWidth);
-                this.focusY = Tweens.Math.constrain(this.focusY, _c.world.bounds.minY + this.halfHeight, _c.world.bounds.maxY - this.halfHeight);
+                this.focusX = Tweens.Math.constrain(this.focusX, _instance_.world.bounds.minX + this.halfWidth, _instance_.world.bounds.maxX - this.halfWidth);
+                this.focusY = Tweens.Math.constrain(this.focusY, _instance_.world.bounds.minY + this.halfHeight, _instance_.world.bounds.maxY - this.halfHeight);
 
                 //Get the corners position on the grid
-                this._upperLeft = c.cameraGrid.getPlace(this.focusX - this.halfWidth - _c.cameraGrid.cellWidth * this.padding,
-                                                        this.focusY - this.halfHeight - _c.cameraGrid.cellHeight * this.padding);
-                this._lowerRight = c.cameraGrid.getPlace(this.focusX + this.halfWidth + _c.cameraGrid.cellWidth * this.padding, 
-                                                         this.focusY + this.halfHeight + _c.cameraGrid.cellHeight * this.padding);
+                this._upperLeft = c.cameraGrid.getPlace(this.focusX - this.halfWidth - _instance_.cameraGrid.cellWidth * this.padding,
+                                                        this.focusY - this.halfHeight - _instance_.cameraGrid.cellHeight * this.padding);
+                this._lowerRight = c.cameraGrid.getPlace(this.focusX + this.halfWidth + _instance_.cameraGrid.cellWidth * this.padding, 
+                                                         this.focusY + this.halfHeight + _instance_.cameraGrid.cellHeight * this.padding);
             };
             Camera.prototype.translate = function(translate)
             {
                 translate(this.x, this.y);
                     
-                if((_c.world.bounds.maxX - _c.world.bounds.minX) >= this.width)
+                if((_instance_.world.bounds.maxX - _instance_.world.bounds.minX) >= this.width)
                 {
                     translate(this.halfWidth - this.focusX, 0);
                 }else{
                     translate(-c.world.bounds.minX, 0);
                 }
-                if((_c.world.bounds.maxY - _c.world.bounds.minY) >= this.height)
+                if((_instance_.world.bounds.maxY - _instance_.world.bounds.minY) >= this.height)
                 {
                     translate(0, this.halfHeight - this.focusY);
                 }else{
-                    translate(0, -_c.world.bounds.minY);
+                    translate(0, -_instance_.world.bounds.minY);
                 }
             };
             Camera.prototype.setTranslate = function(translate)
@@ -728,48 +757,48 @@
             return Camera;
         }(C.prototype));
 
-		C.prototype.cameraGrid = (function(c) 
-		{
-			var cameraGrid = [];
+        C.prototype.cameraGrid = (function(c) 
+        {
+            var cameraGrid = [];
 
-			cameraGrid.setup = function(cols, rows, cellWidth, cellHeight)
-		    {
-		        this.cellWidth = cellWidth;
-		        this.cellHeight = cellHeight;
-		        this.halfCellWidth = cellWidth / 2;
-		        this.halfCellHeight = cellHeight / 2;
+            cameraGrid.setup = function(cols, rows, cellWidth, cellHeight)
+            {
+                this.cellWidth = cellWidth;
+                this.cellHeight = cellHeight;
+                this.halfCellWidth = cellWidth / 2;
+                this.halfCellHeight = cellHeight / 2;
 
-		        this.resize(cols, rows);
-		    };
-		    cameraGrid.resize = function(cols, rows)
-		    {
-		    	this.length = 0;
+                this.resize(cols, rows);
+            };
+            cameraGrid.resize = function(cols, rows)
+            {
+                this.length = 0;
 
-		    	for(var col = 0; col < cols; col++)
-		    	{
-		    		this.push([]);
+                for(var col = 0; col < cols; col++)
+                {
+                    this.push([]);
 
-		    		for(var row = 0; row < rows; row++)
-			    	{
-			    		this[col].push({});
-			    	}
-		    	}
+                    for(var row = 0; row < rows; row++)
+                    {
+                        this[col].push({});
+                    }
+                }
 
-		    	this.cols = cols;
-		    	this.rows = rows;
+                this.cols = cols;
+                this.rows = rows;
 
-		    	this.maxCol = this.length - 1;
-		    	this.maxRow = this[0].length - 1;
-		    };
-		    cameraGrid.getPlace = function(x, y)
-		    {
-		    	return {
-		            col: Math.max(Math.min(Math.round((x - this.halfCellWidth) / this.cellWidth), this.maxCol), 0),
-		            row: Math.max(Math.min(Math.round((y - this.halfCellHeight) / this.cellHeight), this.maxRow), 0)
-		        };
-		    };
+                this.maxCol = this.length - 1;
+                this.maxRow = this[0].length - 1;
+            };
+            cameraGrid.getPlace = function(x, y)
+            {
+                return {
+                    col: Math.max(Math.min(Math.round((x - this.halfCellWidth) / this.cellWidth), this.maxCol), 0),
+                    row: Math.max(Math.min(Math.round((y - this.halfCellHeight) / this.cellHeight), this.maxRow), 0)
+                };
+            };
 
-		    cameraGrid.addReference = function(object) 
+            cameraGrid.addReference = function(object) 
             {
                 var index = object._arrayName + object._id;
                 var toSet = {
@@ -791,7 +820,7 @@
                 object._upperLeft = upperLeft;
                 object._lowerRight = lowerRight;
             };
-		    cameraGrid.removeReference = function(object) 
+            cameraGrid.removeReference = function(object) 
             {
                 var index = object._arrayName + object._id;
 
@@ -807,77 +836,77 @@
                 }
             };
 
-			return cameraGrid;
-		}(C.prototype));
+            return cameraGrid;
+        }(C.prototype));
 
-		C.prototype.gameObjects = (function(c) 
-		{
-			var gameObjects = c.createArray([]);
+        C.prototype.gameObjects = (function(c) 
+        {
+            var gameObjects = c.createArray([]);
 
-			gameObjects.applyCollision = function(objectA)
-			{
-				if(!objectA.body.physics.moves || _c.noPhysics)
-				{
-					return;
-				}
+            gameObjects.applyCollision = function(objectA)
+            {
+                if(!objectA.body.physics.moves || _instance_.noPhysics)
+                {
+                    return;
+                }
 
-				var used = {};
+                var used = {};
 
-				//We don't want to test objectA against it self!
-				used[objectA._arrayName + objectA._id] = true; 
+                //We don't want to test objectA against it self!
+                used[objectA._arrayName + objectA._id] = true; 
 
-				var col, row, cell, i, objectB, info;
+                var col, row, cell, i, objectB, info;
 
                 for(col = objectA._upperLeft.col; col <= objectA._lowerRight.col; col++)
                 {
                     for(row = objectA._upperLeft.row; row <= objectA._lowerRight.row; row++)
                     {
-                    	cell = c.cameraGrid[col][row];
+                        cell = c.cameraGrid[col][row];
 
-		                for(i in cell)
-		                {
-		                	if(used[i])
-		                	{
-		                		continue;
-		                	}
+                        for(i in cell)
+                        {
+                            if(used[i])
+                            {
+                                continue;
+                            }
 
-		                	// Is the same as getObject(name) and then getById(id)
-		                	objectB = this[this.references[cell[i].arrayName]].map[cell[i].id];
+                            // Is the same as getObject(name) and then getById(id)
+                            objectB = this[this.references[cell[i].arrayName]].map[cell[i].id];
 
-		                	//Set tested (early before bounding box test)
-		                	used[i] = true;
+                            //Set tested (early before bounding box test)
+                            used[i] = true;
 
-		                	//Check boundingBox!
-		                	if(!c.observer.boundingBoxesColliding(objectA.body.boundingBox, objectB.body.boundingBox))
-		                    {
-		                        continue;        
-		                    }
+                            //Check boundingBox!
+                            if(!c.observer.boundingBoxesColliding(objectA.body.boundingBox, objectB.body.boundingBox))
+                            {
+                                continue;        
+                            }
 
-		                    if((objectA.body.physics.full && objectB.body.physics.full) || c.observer.colliding(objectA, objectB))
-		                    {
-		                    	info = {};
+                            if((objectA.body.physics.full && objectB.body.physics.full) || c.observer.colliding(objectA, objectB))
+                            {
+                                info = {};
 
-		                    	if(objectA.body.physics.solid && objectB.body.physics.solid)
-		                    	{
-		                    		info = c.observer.solveCollision(objectA, objectB) || {};
+                                if(objectA.body.physics.solid && objectB.body.physics.solid)
+                                {
+                                    info = c.observer.solveCollision(objectA, objectB) || {};
 
-		                    		objectA.body.updateBoundingBox();
-                        			objectB.body.updateBoundingBox();   
-		                    	}
+                                    objectA.body.updateBoundingBox();
+                                    objectB.body.updateBoundingBox();   
+                                }
 
-		                    	objectA.onCollide(objectB, info);
-		                    	objectB.onCollide(objectA, info);
-		                    }
-		                }
+                                objectA.onCollide(objectB, info);
+                                objectB.onCollide(objectA, info);
+                            }
+                        }
                     }
                 }
-			};
-			gameObjects.update = function(cam) 
+            };
+            gameObjects.update = function(cam) 
             {
                 var used = {};
                 this.used = {};
 
-                cam = cam || _c.camera;
+                cam = cam || _instance_.camera;
 
                 var col, row, cell, i, object, index;
 
@@ -919,8 +948,8 @@
                     }
                 }
             };
-			gameObjects.draw = function()
-			{
+            gameObjects.draw = function()
+            {
                 var i, j;
 
                 for(i in this.used)
@@ -930,7 +959,7 @@
                         this[i].map[this.used[i][j]].draw();
                     }
                 }
-			};
+            };
 
             /* Non-essentials */
             gameObjects.getObjectsInCam = function()
@@ -959,64 +988,71 @@
                 }
             };
 
-			return gameObjects;
-		}(C.prototype));
+            return gameObjects;
+        }(C.prototype));
 
-		C.prototype.factory = (function(c)
-		{
-			var factory = {
-				add: function(arrayName, args)
-	            {
-	                var place = c.gameObjects.getObject(arrayName);
-	                var object = place.add.apply(place, args);
-	                c.cameraGrid.addReference(object);
+        C.prototype.factory = (function(c)
+        {
+            var factory = {
+                add: function(arrayName, args)
+                {
+                    var place = c.gameObjects.getObject(arrayName);
+                    var object = place.add.apply(place, args);
+                    c.cameraGrid.addReference(object);
 
-                    for(var i in _c.Overrides.GameObject.body)
+                    for(var i in _instance_.Overrides.GameObject.body)
                     {
-                        object.body[i] = _c.Overrides.GameObject.body[i];
+                        object.body[i] = _instance_.Overrides.GameObject.body[i];
                     }
 
-	                return object;
-	            },
-	            remove: function(name, index)
-	            {
-	                var object = (c.gameObjects[c.gameObjects.references[name]] || [])[index];
-	                if(object)
-	                {
-		                c.cameraGrid.removeReference(object);
-		                delete c.gameObjects[c.gameObjects.references[name]].map[object._id];
-		                c.gameObjects[c.gameObjects.references[name]].splice(index, 1);
-		            }
-	            },
-	            addObject: function()
-	            {
-	                var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
-	                var inputObject = arguments[1] || arguments[0];
+                    return object;
+                },
+                remove: function(name, index)
+                {
+                    var object = (c.gameObjects[c.gameObjects.references[name]] || [])[index];
+                    if(object)
+                    {
+                        c.cameraGrid.removeReference(object);
+                        delete c.gameObjects[c.gameObjects.references[name]].map[object._id];
+                        c.gameObjects[c.gameObjects.references[name]].splice(index, 1);
+                    }
+                },
+                addObject: function()
+                {
+                    var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
+                    var inputObject = arguments[1] || arguments[0];
 
-	                c.gameObjects.addObject(Tweens.String.lower(name), c.createArray(inputObject));
-	                c.Objects[Tweens.String.upper(name)] = inputObject;
+                    c.gameObjects.addObject(Tweens.String.lower(name), c.createArray(inputObject));
+                    c.Objects[Tweens.String.upper(name)] = inputObject;
 
-	                return inputObject;
-	            },
-	            getObject: function()
-	            {
-	            	return c.gameObjects[c.gameObjects.references[name]];
-	            }
-			};
+                    return inputObject;
+                },
+                getObject: function()
+                {
+                    return c.gameObjects[c.gameObjects.references[name]];
+                }
+            };
 
-			return factory;
-		}(C.prototype));
+            return factory;
+        }(C.prototype));
 
-		C.prototype.Objects.GameObject = (function(c) 
-		{
-			function GameObject()
-			{
-				this.body = {
-					physics: {
-						shape: "",
-						moves: false,
-						solid: false
-					},
+        ("createArray, observer, Camera, cameraGrid, gameObjects, factory");
+    }
+
+    function GameObjects(_instance_, C)
+    {
+        "use strict";
+
+        C.prototype.Objects.GameObject = (function(c) 
+        {
+            function GameObject()
+            {
+                this.body = {
+                    physics: {
+                        shape: "",
+                        moves: false,
+                        solid: false
+                    },
                     limits: {
                         left: 0,
                         right: 0,
@@ -1027,69 +1063,69 @@
 
                     xVel: 0,
                     yVel: 0
-				};
+                };
 
                 this.body.contain = function() {};
                 this.body.updateBoundingBox = function() {};
 
-				this.update = function() {};
-				this.draw = function() {};
+                this.update = function() {};
+                this.draw = function() {};
 
-				this.remove = function() {};
-				this.onCollide = function() {};
-			}
+                this.remove = function() {};
+                this.onCollide = function() {};
+            }
 
-			c.gameObjects.addObject("gameObject", c.createArray(GameObject));
+            c.gameObjects.addObject("gameObject", c.createArray(GameObject));
 
-			return GameObject;
-		}(C.prototype));
+            return GameObject;
+        }(C.prototype));
 
-		C.prototype.Objects.Rect = (function(c) 
-		{
-			function Rect(x, y, width, height)
-			{
-				c.Objects.GameObject.apply(this, arguments);
+        C.prototype.Objects.Rect = (function(c) 
+        {
+            function Rect(x, y, width, height)
+            {
+                c.Objects.GameObject.apply(this, arguments);
 
-				this.x = x;
-				this.y = y;
-				this.width = width;
-				this.height = height;
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
 
                 this.halfWidth = width / 2;
                 this.halfHeight = height / 2;
 
                 this._halfHyp = Math.sqrt(Math.pow(this.halfWidth, 2) + Math.pow(this.halfHeight, 2));
 
-				this.body.physics = {
-					shape: "rect",
-		            moves: false,
-		            solid: true,
-		            full: true
-				};
+                this.body.physics = {
+                    shape: "rect",
+                    moves: false,
+                    solid: true,
+                    full: true
+                };
 
-				var self = this;
+                var self = this;
 
-				this.body.updateBoundingBox = function()
-				{
-					var box = this.boundingBox;
-					box.minX = self.x;
-					box.minY = self.y;
-					box.maxX = self.x + self.width;
-					box.maxY = self.y + self.height;
-				};
-				this.body.updateBoundingBox();
+                this.body.updateBoundingBox = function()
+                {
+                    var box = this.boundingBox;
+                    box.minX = self.x;
+                    box.minY = self.y;
+                    box.maxX = self.x + self.width;
+                    box.maxY = self.y + self.height;
+                };
+                this.body.updateBoundingBox();
 
                 this.body.contain = function()
                 {
-                    self.x = Tweens.Math.constrain(self.x, _c.world.bounds.minX - this.limits.left, _c.world.bounds.maxX - self.width + this.limits.right);
-                    self.y = Tweens.Math.constrain(self.y, _c.world.bounds.minY - this.limits.up, _c.world.bounds.maxY - self.height + this.limits.down);
+                    self.x = Tweens.Math.constrain(self.x, _instance_.world.bounds.minX - this.limits.left, _instance_.world.bounds.maxX - self.width + this.limits.right);
+                    self.y = Tweens.Math.constrain(self.y, _instance_.world.bounds.minY - this.limits.up, _instance_.world.bounds.maxY - self.height + this.limits.down);
                 };
-			}
+            }
 
-			c.gameObjects.addObject("rect", c.createArray(Rect));
+            c.gameObjects.addObject("rect", c.createArray(Rect));
 
-			return Rect;
-		}(C.prototype));
+            return Rect;
+        }(C.prototype));
 
         C.prototype.Objects.Circle = (function(c) 
         {
@@ -1123,8 +1159,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Tweens.Math.constrain(self.x, _c.world.bounds.minX + self.radius - this.limits.left, _c.world.bounds.maxX - self.radius + this.limits.right);
-                    self.y = Tweens.Math.constrain(self.y, _c.world.bounds.minY + self.radius - this.limits.up, _c.world.bounds.maxY - self.radius + this.limits.down);
+                    self.x = Tweens.Math.constrain(self.x, _instance_.world.bounds.minX + self.radius - this.limits.left, _instance_.world.bounds.maxX - self.radius + this.limits.right);
+                    self.y = Tweens.Math.constrain(self.y, _instance_.world.bounds.minY + self.radius - this.limits.up, _instance_.world.bounds.maxY - self.radius + this.limits.down);
                 };
             }
 
@@ -1324,8 +1360,8 @@
             return LifeForm;
         }(C.prototype));
 
-		return true;
-	}
+        ("GameObject, Rect, Circle, DynamicObject, LifeForm");
+    }
 
 	/*Globalize Engine*/
 	window['CartesianSystemEngine'] = CartesianSystemEngine;
