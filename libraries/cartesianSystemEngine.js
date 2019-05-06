@@ -1,19 +1,34 @@
 !(function(window, document, Math)
 {
-    String.prototype.upper = function() 
-    {
-        return this.charAt(0).toUpperCase() + this.slice(1);
-    };
-	String.prototype.lower = function() 
-	{
-	    return this.charAt(0).toLowerCase() + this.slice(1);
-	};
-    Math.constrain = function(num, min, max)
-    {
-        return this.min(this.max(num, min), max);
+    /* Tweens are a collection of helper functions */
+    var Tweens = this.Tweens = {
+        String: {
+            upper: function(str)
+            {
+                return str.charAt(0).toUpperCase() + str.slice(1);
+            },
+            lower: function(str)
+            {
+                return str.charAt(0).toLowerCase() + str.slice(1);
+            }
+        },
+        Math: {
+            constrain: function(num, min, max)
+            {
+                return Math.min(Math.max(num, min), max);
+            }
+        }
     };
 
-	function noop() {}
+    Object.defineProperty(Tweens, 'NOOP', 
+    {
+        // No-operation
+        value: function NOOP() 
+        {
+            // NOOP 
+        },
+        writable: false
+    });
 
 	var CartesianSystemEngine = this.CartesianSystemEngine = function(config)
 	{
@@ -95,7 +110,7 @@
 					empty: 0
 				};
 				array.map = {};
-				array._name = arrayName || (object.name || "").lower();
+				array._name = arrayName || Tweens.String.lower(object.name || "");
 
 				var args, i;
 				array.add = function()
@@ -116,7 +131,7 @@
 
 			        var item = this[i];
 			        item._id = i + this.temp.empty;
-			        item._name = this.temp.name || (object.name || "").lower();
+			        item._name = this.temp.name || (object.name || "");
 			        item._arrayName = this._name;
 
 			        delete this.temp.name;
@@ -460,8 +475,8 @@
                     "rectcircle": {
                         colliding: function(rect, circle)
                         {
-                            var x = circle.x - Math.constrain(circle.x, rect.x, rect.x + rect.width);                  
-                            var y = circle.y - Math.constrain(circle.y, rect.y, rect.y + rect.height);
+                            var x = circle.x - Tweens.Math.constrain(circle.x, rect.x, rect.x + rect.width);                  
+                            var y = circle.y - Tweens.Math.constrain(circle.y, rect.y, rect.y + rect.height);
                             return ((this.dist = x * x + y * y) <= circle.radius * circle.radius);
                         },
                         solveCollision: function(rect, circle)
@@ -536,8 +551,8 @@
 
                                 /* Circlings */
                                 var cBox = circle.body.boundingBox;
-                                rect.x = Math.constrain(circle.x + (circle.radius + rect._halfHyp) * Math.cos(angle) - rect.halfWidth, cBox.minX - rect.width, cBox.maxX);
-                                rect.y = Math.constrain(circle.y + (circle.radius + rect._halfHyp) * Math.sin(angle) - rect.halfHeight, cBox.minY - rect.height, cBox.maxY);
+                                rect.x = Tweens.Math.constrain(circle.x + (circle.radius + rect._halfHyp) * Math.cos(angle) - rect.halfWidth, cBox.minX - rect.width, cBox.maxX);
+                                rect.y = Tweens.Math.constrain(circle.y + (circle.radius + rect._halfHyp) * Math.sin(angle) - rect.halfHeight, cBox.minY - rect.height, cBox.maxY);
                             }
                             if(circle.body.physics.moves)
                             {
@@ -669,8 +684,8 @@
                 this.focusY += this.distance * Math.sin(this.angle);
 
                 //Keep it in the grid
-                this.focusX = Math.constrain(this.focusX, _c.world.bounds.minX + this.halfWidth, _c.world.bounds.maxX - this.halfWidth);
-                this.focusY = Math.constrain(this.focusY, _c.world.bounds.minY + this.halfHeight, _c.world.bounds.maxY - this.halfHeight);
+                this.focusX = Tweens.Math.constrain(this.focusX, _c.world.bounds.minX + this.halfWidth, _c.world.bounds.maxX - this.halfWidth);
+                this.focusY = Tweens.Math.constrain(this.focusY, _c.world.bounds.minY + this.halfHeight, _c.world.bounds.maxY - this.halfHeight);
 
                 //Get the corners position on the grid
                 this._upperLeft = c.cameraGrid.getPlace(this.focusX - this.halfWidth - _c.cameraGrid.cellWidth * this.padding,
@@ -978,8 +993,8 @@
 	                var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
 	                var inputObject = arguments[1] || arguments[0];
 
-	                c.gameObjects.addObject(name.lower(), c.createArray(inputObject));
-	                c.Objects[name.upper()] = inputObject;
+	                c.gameObjects.addObject(Tweens.String.lower(name), c.createArray(inputObject));
+	                c.Objects[Tweens.String.upper(name)] = inputObject;
 
 	                return inputObject;
 	            },
@@ -1066,8 +1081,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, _c.world.bounds.minX - this.limits.left, _c.world.bounds.maxX - self.width + this.limits.right);
-                    self.y = Math.constrain(self.y, _c.world.bounds.minY - this.limits.up, _c.world.bounds.maxY - self.height + this.limits.down);
+                    self.x = Tweens.Math.constrain(self.x, _c.world.bounds.minX - this.limits.left, _c.world.bounds.maxX - self.width + this.limits.right);
+                    self.y = Tweens.Math.constrain(self.y, _c.world.bounds.minY - this.limits.up, _c.world.bounds.maxY - self.height + this.limits.down);
                 };
 			}
 
@@ -1108,8 +1123,8 @@
 
                 this.body.contain = function()
                 {
-                    self.x = Math.constrain(self.x, _c.world.bounds.minX + self.radius - this.limits.left, _c.world.bounds.maxX - self.radius + this.limits.right);
-                    self.y = Math.constrain(self.y, _c.world.bounds.minY + self.radius - this.limits.up, _c.world.bounds.maxY - self.radius + this.limits.down);
+                    self.x = Tweens.Math.constrain(self.x, _c.world.bounds.minX + self.radius - this.limits.left, _c.world.bounds.maxX - self.radius + this.limits.right);
+                    self.y = Tweens.Math.constrain(self.y, _c.world.bounds.minY + self.radius - this.limits.up, _c.world.bounds.maxY - self.radius + this.limits.down);
                 };
             }
 
@@ -1143,11 +1158,11 @@
                 this.body.updateVel = function()
                 {
                     this.xVel += this.gravityX;
-                    this.xVel = Math.constrain(this.xVel, -this.maxXVel, this.maxXVel);
+                    this.xVel = Tweens.Math.constrain(this.xVel, -this.maxXVel, this.maxXVel);
                     self.x += this.xVel;
                     
                     this.yVel += this.gravityY;
-                    this.yVel = Math.constrain(this.yVel, -this.maxYVel, this.maxYVel);
+                    this.yVel = Tweens.Math.constrain(this.yVel, -this.maxYVel, this.maxYVel);
                     self.y += this.yVel;
 
                     this.inAir = true;
@@ -1233,10 +1248,10 @@
             function LifeForm()
             {
                 this.controls = { 
-                    left: noop, 
-                    right: noop, 
-                    up: noop, 
-                    down: noop
+                    left: Tweens.NOOP, 
+                    right: Tweens.NOOP, 
+                    up: Tweens.NOOP, 
+                    down: Tweens.NOOP
                 };
 
                 var lastUpdate = this.update;

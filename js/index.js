@@ -203,18 +203,18 @@ function preload()
     var body = cse.Overrides.GameObject.body;
 
     body.maxXVel = 5;
-    body.maxYVel = 16;
+    body.maxYVel = 5;
     body.xAcl = 2;
     body.yAcl = 2;
     body.xDeacl = 1;
-    body.yDeacl = 0;
+    body.yDeacl = 1;
 
-    body.gravityY = 0.45;
-    body.jumpHeight = 13;
+    // body.gravityY = 0.45;
+    // body.jumpHeight = 13;
 
     body.xForce = 4;
-    body.yForce = 0;
-    body.upForce = 4;
+    body.yForce = 4;
+    // body.upForce = 4;
 
     const keys = [];
     var keyPressed = function()
@@ -274,7 +274,7 @@ function main()
         ]);
 
         cse.factory.add("block", [
-            200, 450, 400, 40,
+            210, 730, 800, 40,
             color(23, 4, 125, 150)
         ]);
 
@@ -283,53 +283,56 @@ function main()
             color(23, 4, 125, 150) 
         ]);
 
+
         cse.factory.add("crate", [ 350, 254, 23, 34, color(23, 4, 125, 150) ]);
-        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
-        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
-        cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
+        for(var i = 20; i; i--)
+        {
+            
+            cse.factory.add("crate", [ 350 + i * 34, 254 + random(324, 222), 34, 34, color(23, 4, 165, 150) ]);
+        }
         // cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
 
-        // for(var i = 0; i < 500; i++)
-        // {
-        //     cse.factory.add("block", [
-        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-        //         random(10, 30) * 4, 
-        //         random(10, 30) * 4, 
-        //         color(23, 4, 125)
-        //     ]);
-        // }
+        for(var i = 0; i < 500; i++)
+        {
+            cse.factory.add("block", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(10, 30) * 4, 
+                random(10, 30) * 4, 
+                color(23, 4, 125)
+            ]);
+        }
 
-        // for(var i = 0; i < 500; i++)
-        // {
-        //     cse.factory.add("crate", [
-        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-        //         random(10, 30), 
-        //         random(10, 30), 
-        //         color(23, 124, 125)
-        //     ]);
-        // }
+        for(var i = 0; i < 500; i++)
+        {
+            cse.factory.add("crate", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(10, 30), 
+                random(10, 30), 
+                color(23, 124, 125)
+            ]);
+        }         
 
-        // for(var i = 0; i < 300; i++)
-        // {
-        //     cse.factory.add("ring", [
-        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-        //         random(30, 80), 
-        //         color(73, 4, 45)
-        //     ]);
-        // }
+        for(var i = 0; i < 500; i++)
+        {
+            cse.factory.add("ring", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(30, 80), 
+                color(73, 4, 45)
+            ]);
+        }
 
-        // for(var i = 0; i < 300; i++)
-        // {
-        //     cse.factory.add("ball", [
-        //         round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
-        //         round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
-        //         random(20, 60), 
-        //         color(23, 124, 125)
-        //     ]);
-        // }
+        for(var i = 0; i < 500; i++)
+        {
+            cse.factory.add("ball", [
+                round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
+                round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
+                random(20, 60), 
+                color(23, 124, 125)
+            ]);
+        }
     }
 
     window.player = cse.factory.add("player", [350, 340, 34, 34, color(0, 80, 205, 200)]);
