@@ -1079,7 +1079,7 @@
 
                     if(!objects)
                     {
-                        return false; // Return success
+                        return false; // Return failure
                     }
 
                     c.gameObjects.removeObject(name);
