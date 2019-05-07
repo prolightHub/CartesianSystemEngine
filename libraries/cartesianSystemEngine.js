@@ -55,7 +55,7 @@
             }
         };
 
-		//Lets the entire project know that we have initiated the project.
+		// Lets the entire project know that we have initiated the project.
 		c.initiated = init(this, C);
 
 		if(typeof c.initiated === "string")
@@ -194,6 +194,19 @@
                     this.removeFromMap(this[index]._id);
                     this.splice(index, 1);
                 };
+                array.empty = function()
+                {
+                    this.length = 0;
+                    this.refresh();
+                };
+                array.clear = function(name)
+                {
+                    var array = this.getObject(name);
+                    if(array)
+                    {
+                        array.empty();
+                    }
+                };
                 array.removeFromMap = function(id)
                 {
                     delete this.map[id];
@@ -204,11 +217,17 @@
                     return this.map[id];
                 };
 
-                /*Call this after removing items from the array, 
-                like splice or other functions*/
+                /* Call this after removing items from the array, 
+                like splice or other functions */
                 array.refresh = function() 
                 {
                     this.map = {};
+
+                    if(this.length === 0)
+                    {
+                        this.temp.empty = 0;
+                        return;
+                    }
 
                     var maxId = 0;
                     for(var i = 0; i < this.length; i++)
@@ -841,7 +860,7 @@
 
         C.prototype.gameObjects = (function(c) 
         {
-            var gameObjects = c.createArray([]);
+            var gameObjects = c.createArray([], undefined, "gameObject");
 
             gameObjects.applyCollision = function(objectA)
             {
@@ -852,7 +871,7 @@
 
                 var used = {};
 
-                //We don't want to test objectA against it self!
+                // We don't want to test objectA against it self!
                 used[objectA._arrayName + objectA._id] = true; 
 
                 var col, row, cell, i, objectB, info;
@@ -873,10 +892,10 @@
                             // Is the same as getObject(name) and then getById(id)
                             objectB = this[this.references[cell[i].arrayName]].map[cell[i].id];
 
-                            //Set tested (early before bounding box test)
+                            // Set tested (early before bounding box test)
                             used[i] = true;
 
-                            //Check boundingBox!
+                            // Check boundingBoxes!
                             if(!c.observer.boundingBoxesColliding(objectA.body.boundingBox, objectB.body.boundingBox))
                             {
                                 continue;        
@@ -994,7 +1013,13 @@
         C.prototype.factory = (function(c)
         {
             var factory = {
-                add: function(arrayName, args)
+                add: function(arrayName)
+                {
+                    var args = Array.prototype.slice.call(arguments);
+                    args.shift();
+                    return this.create(arrayName, args);
+                },
+                create: function(arrayName, args)
                 {
                     var place = c.gameObjects.getObject(arrayName);
                     var object = place.add.apply(place, args);
@@ -1013,30 +1038,61 @@
                     if(object)
                     {
                         c.cameraGrid.removeReference(object);
-                        delete c.gameObjects[c.gameObjects.references[name]].map[object._id];
                         c.gameObjects[c.gameObjects.references[name]].splice(index, 1);
+                        delete c.gameObjects[c.gameObjects.references[name]].map[object._id];
                     }
+                },
+                clear: function(name)
+                {
+                    var objects = c.gameObjects.getObject(name);
+
+                    if(!objects)
+                    {
+                        return;
+                    }
+
+                    objects.forEach(function(element)
+                    {
+                        c.cameraGrid.removeReference(element);
+                    });
+                    objects.empty();
+
+                    return objects;
                 },
                 addObject: function()
                 {
-                    var name = ((typeof arguments[0] === "string") ? arguments[0] : arguments[0].name || "");
-                    var inputObject = arguments[1] || arguments[0];
+                    var object = arguments[1] || arguments[0];
+                    var name = ((typeof arguments[0] === "string") ? arguments[0] : object.name) || "anonymous";
+                    
+                    c.gameObjects.addObject(Tweens.String.lower(name), c.createArray(object));
+                    c.Objects[Tweens.String.upper(name)] = object;
 
-                    c.gameObjects.addObject(Tweens.String.lower(name), c.createArray(inputObject));
-                    c.Objects[Tweens.String.upper(name)] = inputObject;
-
-                    return inputObject;
+                    return object;
                 },
-                getObject: function()
+                getObject: function(name)
                 {
-                    return c.gameObjects[c.gameObjects.references[name]];
-                }
+                    return c.gameObjects[c.gameObjects.references[name]] || c.Objects[name];
+                },
+                removeObject: function(name)
+                {
+                    var objects = this.clear(name);
+
+                    if(!objects)
+                    {
+                        return false; // Return success
+                    }
+
+                    c.gameObjects.removeObject(name);
+                    delete c.Objects[Tweens.String.upper(name)];
+
+                    return true; // Return success
+                },
             };
 
             return factory;
         }(C.prototype));
 
-        ("createArray, observer, Camera, cameraGrid, gameObjects, factory");
+        return ("createArray, observer, Camera, cameraGrid, gameObjects, factory");
     }
 
     function GameObjects(_instance_, C)
@@ -1360,9 +1416,9 @@
             return LifeForm;
         }(C.prototype));
 
-        ("GameObject, Rect, Circle, DynamicObject, LifeForm");
+        return ("GameObject, Rect, Circle, DynamicObject, LifeForm");
     }
 
-	/*Globalize Engine*/
+	/* Globalize Engine */
 	window['CartesianSystemEngine'] = CartesianSystemEngine;
 }(window, window.document, Math));

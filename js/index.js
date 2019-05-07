@@ -11,7 +11,7 @@ function objects()
             rect(this.x, this.y, this.width, this.height);
         };
     };
-    cse.factory.addObject("block", Block);
+    cse.factory.addObject("block", (Block));
 
     var Crate = function(x, y, width, height, color)
     {
@@ -34,7 +34,7 @@ function objects()
 
         // this.body.limits.down = Infinity;
     };
-    cse.factory.addObject("crate", Crate);
+    cse.factory.addObject(Crate);
 
     var Ring = function(x, y, diameter, color)
     {
@@ -47,7 +47,7 @@ function objects()
             ellipse(this.x, this.y, this.diameter, this.diameter);
         };
     };
-    cse.factory.addObject("ring", Ring);
+    cse.factory.addObject(Ring);
 
     var Ball = function(x, y, diameter, color)
     {
@@ -66,7 +66,7 @@ function objects()
 
         // this.body.limits.down = Infinity;
     };
-    cse.factory.addObject("ball", Ball);
+    cse.factory.addObject(Ball);
 
     var Player = function(x, y, width, height, color)
     {
@@ -109,7 +109,7 @@ function objects()
 
         // this.body.limits.down = Infinity;
     };
-    cse.factory.addObject("player", Player);
+    cse.factory.addObject(Player);
 }
 
 function ui()
@@ -240,16 +240,18 @@ function preload()
     };
     fpsCatcher.update = function()
     {
-        this.deltaTime = (now() - this.lastTime);
-        this.lastTime = now();
+        this.time = now();
+
+        this.deltaTime = (this.time - this.lastTime);
+        this.lastTime = this.time;
         
         this.fps = 1000 / this.deltaTime;
         this.speed = (this.deltaTime / 1000) * 60;
         
-        if(now() - this.lastOutTime > 250)
+        if(this.time - this.lastOutTime > 250)
         {
             this.outFps = this.fps;
-            this.lastOutTime = now();
+            this.lastOutTime = this.time;
         }
     };
 
@@ -263,38 +265,38 @@ function main()
 {
     function setup()
     {
-        cse.factory.add("block", [
+        cse.factory.create("block", [
             200, 164, 40, 360,
             color(23, 4, 125, 150)
         ]);
 
-        cse.factory.add("block", [
+        cse.factory.create("block", [
             200, 124, 400, 40,
             color(23, 4, 125, 150)
         ]);
 
-        cse.factory.add("block", [
+        cse.factory.create("block", [
             210, 730, 800, 40,
             color(23, 4, 125, 150)
         ]);
 
-        cse.factory.add("block", [
+        cse.factory.create("block", [
             600, 124, 40, 440, 
             color(23, 4, 125, 150) 
         ]);
 
 
-        cse.factory.add("crate", [ 350, 254, 23, 34, color(23, 4, 125, 150) ]);
+        cse.factory.create("crate", [ 350, 254, 23, 34, color(23, 4, 125, 150) ]);
         for(var i = 20; i; i--)
         {
             
-            cse.factory.add("crate", [ 350 + i * 34, 254 + random(324, 222), 34, 34, color(23, 4, 165, 150) ]);
+            cse.factory.create("crate", [ 350 + i * 34, 254 + random(324, 222), 34, 34, color(23, 4, 165, 150) ]);
         }
-        // cse.factory.add("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
+        // cse.factory.create("crate", [ 350, 254, 34, 34, color(23, 4, 165, 150) ]);
 
         for(var i = 0; i < 500; i++)
         {
-            cse.factory.add("block", [
+            cse.factory.create("block", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
                 round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
                 random(10, 30) * 4, 
@@ -305,7 +307,7 @@ function main()
 
         for(var i = 0; i < 500; i++)
         {
-            cse.factory.add("crate", [
+            cse.factory.create("crate", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
                 round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
                 random(10, 30), 
@@ -316,7 +318,7 @@ function main()
 
         for(var i = 0; i < 500; i++)
         {
-            cse.factory.add("ring", [
+            cse.factory.create("ring", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
                 round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
                 random(30, 80), 
@@ -326,7 +328,7 @@ function main()
 
         for(var i = 0; i < 500; i++)
         {
-            cse.factory.add("ball", [
+            cse.factory.create("ball", [
                 round(random(cse.world.bounds.minX, cse.world.bounds.maxX)), 
                 round(random(cse.world.bounds.minY, cse.world.bounds.maxY)), 
                 random(20, 60), 
@@ -335,7 +337,7 @@ function main()
         }
     }
 
-    window.player = cse.factory.add("player", [350, 340, 34, 34, color(0, 80, 205, 200)]);
+    window.player = cse.factory.add("player", 350, 340, 34, 34, color(0, 80, 205, 200));
     var cam = cse.camera;
     cam.draw = function()
     {
